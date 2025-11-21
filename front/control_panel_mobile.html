@@ -1119,71 +1119,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         </div>
 
 
-                        <div class="card">
-                            <h4 style="margin-top: 0; margin-bottom: 15px;">兼容性配置</h4>
-
-                            <div class="form-group">
-                                <label style="display: flex; align-items: center; gap: 8px;">
-                                    <input type="checkbox" id="compatibilityModeEnabled"
-                                        style="width: auto; margin: 0;" />
-                                    启用兼容性模式
-                                </label>
-                                <small
-                                    style="display: block; color: #666; font-size: 12px; margin-top: 5px;">启用后所有system消息全部转换成user，停用system_instructions
-                                    <span style="color: #28a745;">✓ 支持热更新</span></small>
-                                <div
-                                    style="background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 12px; margin-top: 8px; font-size: 13px; color: #856404;">
-                                    <strong>⚠️ 注意：</strong>该选项可能会降低模型理解能力，但是能避免流式空回的情况。
-                                    <br><strong>适用场景：</strong>当遇到流式传输时模型不返回内容或返回空响应时启用此选项。
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <h4 style="margin-top: 0; margin-bottom: 15px;">抗截断配置</h4>
-
-                            <div class="form-group">
-                                <label for="antiTruncationMaxAttempts">抗截断最大重试次数:</label>
-                                <input type="number" id="antiTruncationMaxAttempts" min="1" max="10" />
-                                <small
-                                    style="display: block; color: #666; font-size: 12px; margin-top: 5px;">当检测到输出截断时的最大续传尝试次数</small>
-                            </div>
-
-                            <div
-                                style="background-color: #e3f2fd; border: 1px solid #1976d2; border-radius: 6px; padding: 12px; margin-top: 8px; font-size: 13px; color: #1565c0;">
-                                <strong>注意：</strong>抗截断功能现在通过模型名控制：
-                                <ul style="margin: 5px 0; padding-left: 20px; color: #424242;">
-                                    <li>选择带有 "-流式抗截断" 后缀的模型即可启用</li>
-                                    <li>该功能仅在流式传输时生效</li>
-                                    <li>例如: "gemini-2.5-pro-流式抗截断"</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <h4 style="margin-top: 0; margin-bottom: 15px;">配置热更新说明</h4>
-
-                            <div
-                                style="background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; padding: 12px; font-size: 13px; color: #155724; margin-bottom: 10px;">
-                                <strong>🔥 热更新配置（立即生效）：</strong>
-                                <ul style="margin: 8px 0; padding-left: 20px; color: #212529;">
-                                    <li><strong>网络配置：</strong>代理、端点配置、超时、连接数</li>
-                                    <li><strong>API配置：</strong>轮换次数、重试设置、自动封禁</li>
-                                    <li><strong>密码配置：</strong>API密码、面板密码</li>
-                                    <li><strong>功能配置：</strong>抗截断重试次数</li>
-                                </ul>
-                            </div>
-
-                            <div
-                                style="background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 12px; font-size: 13px; color: #856404; margin-bottom: 10px;">
-                                <strong>🔄 需要重启的配置：</strong>
-                                <ul style="margin: 8px 0; padding-left: 20px; color: #212529;">
-                                    <li><strong>服务器配置：</strong>主机地址、端口号</li>
-                                    <li><strong>文件路径：</strong>凭证目录</li>
-                                </ul>
-                            </div>
-
-                        </div>
+                        
                     </div>
                 </div>
             </div>
@@ -1264,80 +1200,6 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         </ul>
                     </div>
                 </div>
-            </div>
-
-            <!-- 项目信息标签页 -->
-            <div id="aboutTab" class="tab-content">
-                <h3>项目信息</h3>
-                <p>关于GCLI2API项目的详细信息</p>
-
-                <!-- 项目介绍 -->
-                <div class="card">
-                    <h4 style="margin-top: 0; color: #007bff;">📋 项目简介</h4>
-                    <p style="margin: 10px 0; line-height: 1.6; color: #495057; font-size: 14px;">
-                        GCLI2API是一个将Google Gemini API转换为OpenAI 和GEMINI API格式的代理工具，支持多账户管理、自动轮换、实时日志监控等功能。
-                    </p>
-                    <div style="margin: 15px 0; font-size: 14px;">
-                        <p style="margin: 5px 0;"><strong>🔗 项目地址：</strong> <a
-                                href="https://github.com/su-kaka/gcli2api" target="_blank"
-                                style="color: #007bff; text-decoration: none;">GitHub - su-kaka/gcli2api</a></p>
-                        <p style="margin: 5px 0;"><strong>⚠️ 使用声明：</strong> <span
-                                style="color: #dc3545; font-weight: 500;">禁止商业用途和倒卖 - 仅供学习使用</span></p>
-                    </div>
-                </div>
-
-                <!-- 功能特性 -->
-                <div class="card">
-                    <h4 style="margin-top: 0; color: #17a2b8;">✨ 主要功能</h4>
-                    <div style="font-size: 14px; line-height: 1.6;">
-                        <p><strong>🔄 多账户管理：</strong> 支持批量上传和管理多个Google账户</p>
-                        <p><strong>⚡ 自动轮换：</strong> 智能轮换账户，避免单账户限额</p>
-                        <p><strong>📊 实时监控：</strong> 使用统计、错误监控、实时日志</p>
-                        <p><strong>🛡️ 安全可靠：</strong> OAuth2认证、自动封禁异常账户</p>
-                        <p><strong>🎛️ 配置灵活：</strong> 支持热更新配置、代理设置</p>
-                        <p><strong>📱 界面友好：</strong> 响应式设计、移动端适配</p>
-                    </div>
-                </div>
-
-                <!-- 支持项目 -->
-                <div
-                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 12px; margin: 20px 0; text-align: center; box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);">
-                    <h4 style="margin: 0 0 15px 0; font-size: 20px; font-weight: 600;">💝 支持项目发展</h4>
-                    <p style="margin: 0 0 20px 0; font-size: 14px; opacity: 0.9; line-height: 1.6;">
-                        如果这个项目对您有帮助，欢迎通过币安扫码捐赠支持项目的持续发展！
-                        您的每一份支持都是我们前进的动力 ❤️
-                    </p>
-
-                    <div
-                        style="display: inline-block; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.1);">
-                        <img src="docs/币安.jpg" alt="币安捐赠二维码"
-                            style="width: 180px; height: 180px; border-radius: 8px; display: block;">
-                        <p style="color: #666; margin: 10px 0 0 0; font-size: 13px; font-weight: 600;">扫码币安捐赠</p>
-                    </div>
-                </div>
-
-                <!-- 联系和反馈 -->
-                <div class="card">
-                    <h4 style="margin-top: 0; color: #0c5460;">📞 联系我们</h4>
-                    <div style="color: #0c5460; line-height: 1.6; font-size: 14px;">
-                        <p>• <strong>问题反馈：</strong> 通过GitHub Issues提交问题和建议</p>
-                        <p>• <strong>功能请求：</strong> 在GitHub Discussions中讨论新功能</p>
-                        <p>• <strong>代码贡献：</strong> 欢迎提交Pull Request改进项目</p>
-                        <p>• <strong>文档完善：</strong> 帮助改进项目文档和使用指南</p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="statusSection"></div>
-
-            <!-- 项目信息 -->
-            <div
-                style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px; margin-top: 20px; text-align: center; border-left: 4px solid #007bff;">
-                <p style="margin: 4px 0; font-size: 12px; color: #495057;">GitHub: <a
-                        href="https://github.com/su-kaka/gcli2api" target="_blank"
-                        style="color: #007bff; text-decoration: none;">github.com/su-kaka/gcli2api</a></p>
-                <p style="margin: 4px 0; font-size: 12px; color: #dc3545; font-weight: 500;">⚠️ 禁止商业用途和倒卖 - 仅供学习使用 ⚠️
-                </p>
             </div>
         </div>
     </div>
@@ -3064,11 +2926,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             setFieldValue('retry429Interval', config.retry_429_interval);
 
 
-            // 兼容性配置
-            setCheckboxValue('compatibilityModeEnabled', config.compatibility_mode_enabled);
-
-            // 抗截断配置
-            setFieldValue('antiTruncationMaxAttempts', config.anti_truncation_max_attempts);
+            
 
             // 标记环境变量锁定的字段
             markEnvLockedFields();
@@ -3106,8 +2964,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 'callsPerRotation': 'calls_per_rotation',
                 'retry429Enabled': 'retry_429_enabled',
                 'retry429MaxRetries': 'retry_429_max_retries',
-                'retry429Interval': 'retry_429_interval',
-                'antiTruncationMaxAttempts': 'anti_truncation_max_attempts'
+                'retry429Interval': 'retry_429_interval'
             };
 
             for (const [fieldId, configKey] of Object.entries(fieldMapping)) {
@@ -3147,11 +3004,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
 
                 retry_429_enabled: document.getElementById('retry429Enabled').checked,
                 retry_429_max_retries: parseInt(document.getElementById('retry429MaxRetries').value) || null,
-                retry_429_interval: parseFloat(document.getElementById('retry429Interval').value) || null,
-
-
-                compatibility_mode_enabled: document.getElementById('compatibilityModeEnabled').checked,
-                anti_truncation_max_attempts: parseInt(document.getElementById('antiTruncationMaxAttempts').value) || null
+                retry_429_interval: parseFloat(document.getElementById('retry429Interval').value) || null
             };
 
             // 处理自动封禁错误码（转换为数组）
@@ -3181,8 +3034,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 'calls_per_rotation': 'callsPerRotation',
                 'retry_429_enabled': 'retry429Enabled',
                 'retry_429_max_retries': 'retry429MaxRetries',
-                'retry_429_interval': 'retry429Interval',
-                'anti_truncation_max_attempts': 'antiTruncationMaxAttempts'
+                'retry_429_interval': 'retry429Interval'
             };
 
             const filteredConfig = {};

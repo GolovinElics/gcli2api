@@ -12,5 +12,8 @@ RUN pip install -r requirements.txt
 # 复制其余代码
 COPY . .
 
+# 暴露服务端口
+EXPOSE 7861
+
 # 默认启动命令
 CMD ["python", "web.py"]

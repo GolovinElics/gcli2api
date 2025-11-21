@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GCLI2API 控制面板</title>
+    <title>AMB2API 管理面板</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -827,6 +827,23 @@
             display: block;
             margin-bottom: 2px;
         }
+        .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .table thead th { background: #f8f9fa; color: #333; text-align: left; padding: 8px; border-bottom: 1px solid #e9ecef; }
+        .table tbody td { padding: 8px; border-bottom: 1px solid #f1f3f5; color: #222; }
+        .table tbody tr:nth-child(odd) { background: #fcfcfc; }
+        .table tbody tr:hover { background: #f8fbff; }
+        .ranking-container { background:#ffffff; border:1px solid #dee2e6; border-radius:8px; padding:12px; }
+        .ranking-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; font-size:14px; }
+        .ranking-list { display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; }
+        .ranking-item { display:flex; align-items:center; gap:12px; }
+        .ranking-label { min-width:200px; font-size:12px; color:#333; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .ranking-bar { flex:1; height:18px; background:#f1f3f5; border-radius:9px; position:relative; overflow:hidden; }
+        .ranking-bar-success { position:absolute; left:0; top:0; height:100%; background:#4caf50; }
+        .ranking-bar-fail { position:absolute; top:0; height:100%; background:#dc3545; }
+        .ranking-count { width:60px; text-align:right; font-size:12px; color:#666; }
+        .legend { display:flex; gap:12px; font-size:12px; color:#666; margin-bottom:8px; }
+        .legend .success-dot { width:10px; height:10px; background:#4caf50; border-radius:50%; display:inline-block; margin-right:6px; }
+        .legend .fail-dot { width:10px; height:10px; background:#dc3545; border-radius:50%; display:inline-block; margin-right:6px; }
 
         .usage-info-value {
             color: #333;
@@ -904,7 +921,7 @@
 
         <!-- 登录界面 -->
         <div id="loginSection" class="login-form">
-            <h1>GCLI2API 管理面板</h1>
+            <h1>AMB2API 管理面板</h1>
             <p>请输入访问密码：</p>
             <input type="password" id="loginPassword" placeholder="输入密码" onkeypress="handlePasswordEnter(event)" />
             <br>
@@ -913,155 +930,16 @@
 
         <!-- 主界面 -->
         <div id="mainSection" class="hidden">
-            <h1>GCLI2API 管理面板</h1>
+            <h1>AMB2API 管理面板</h1>
 
             <!-- 标签页 -->
             <div class="tabs">
-                <button class="tab active" onclick="switchTab('oauth')">OAuth认证</button>
-                <button class="tab" onclick="switchTab('upload')">批量上传</button>
-                <button class="tab" onclick="switchTab('envload')">环境变量</button>
-                <button class="tab" onclick="switchTab('manage')">文件管理</button>
+                <button class="tab active" onclick="switchTab('config')">配置管理</button>
                 <button class="tab" onclick="switchTab('usage')">使用统计</button>
-                <button class="tab" onclick="switchTab('config')">配置管理</button>
                 <button class="tab" onclick="switchTab('logs')">实时日志</button>
-                <button class="tab" onclick="switchTab('about')">项目信息</button>
+                <button class="tab" onclick="switchTab('playground')">操练场</button>
             </div>
 
-            <!-- OAuth认证标签页 -->
-            <div id="oauthTab" class="tab-content active">
-                <!-- API 自动启用说明 -->
-                <div class="status success" style="margin-bottom: 20px;">
-                    <strong>✨ 自动化优化：</strong> 系统现在会在认证成功后自动为您的项目启用必需的API服务
-                    <ul style="margin: 10px 0; padding-left: 20px;">
-                        <li><strong>Gemini Cloud Assist API</strong></li>
-                        <li><strong>Gemini for Google Cloud API</strong></li>
-                    </ul>
-                    <p style="margin: 10px 0; color: #155724;"><strong>说明：</strong>无需手动启用API，系统会自动处理这些配置步骤，让认证流程更加顺畅。
-                    </p>
-                </div>
-
-                <!-- 折叠式 Project ID 输入框 -->
-                <div class="form-group">
-                    <div style="cursor: pointer; user-select: none; padding: 12px; border: 2px solid #ddd; border-radius: 5px; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center;"
-                        onclick="toggleProjectIdSection()">
-                        <span style="font-weight: bold; color: #555;">📁 高级选项：Google Cloud Project ID
-                            (不用管，直接点击获取链接即可)</span>
-                        <span id="projectIdToggleIcon"
-                            style="font-size: 14px; color: #666; transition: transform 0.3s ease;">▶</span>
-                    </div>
-                    <div id="projectIdSection"
-                        style="display: none; margin-top: 15px; padding: 15px; border: 2px solid #ddd; border-top: none; border-radius: 0 0 5px 5px; background: #ffffff;">
-                        <label for="projectId"
-                            style="display: block; margin-bottom: 5px; font-weight: bold; color: #555;">Google Cloud
-                            Project ID (可选):</label>
-                        <input type="text" id="projectId"
-                            style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; font-size: 16px; box-sizing: border-box;"
-                            placeholder="留空将尝试自动检测，或手动输入项目ID" />
-                        <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
-                            💡 提示：如果你不懂这是什么，可以留空此字段让系统自动检测项目ID
-                        </small>
-                    </div>
-                </div>
-
-                <!-- 为所有项目获取凭证选项 -->
-                <div class="form-group">
-                    <div style="padding: 15px; border: 2px solid #28a745; border-radius: 8px; background: #f8fff9;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <input type="checkbox" id="getAllProjectsCreds" style="transform: scale(1.3);">
-                            <label for="getAllProjectsCreds"
-                                style="font-weight: bold; color: #28a745; margin: 0; cursor: pointer;">
-                                🌐 为当前账号所有项目获取凭证
-                            </label>
-                        </div>
-                        <div style="margin-top: 10px; color: #155724; font-size: 14px; line-height: 1.5;">
-                            <strong>说明：</strong>勾选此选项后，系统会自动检测当前Google账号下的所有项目，<strong>并发处理</strong>为每个项目生成独立的认证文件。
-                        </div>
-                        <div id="allProjectsNote"
-                            style="margin-top: 8px; padding: 8px; background: #d4edda; border-radius: 5px; font-size: 13px; color: #155724; display: none;">
-                            ✨ <strong>批量并发认证模式已启用</strong> - 认证完成后将并发为所有可访问的项目生成凭证文件
-                        </div>
-                    </div>
-                </div>
-
-                <button class="btn" id="getAuthBtn" onclick="startAuth()">获取认证链接</button>
-
-                <div id="authUrlSection" class="hidden">
-                    <h3>认证链接：</h3>
-                    <div class="auth-url">
-                        <a id="authUrl" href="#" target="_blank">点击此链接进行认证</a>
-                    </div>
-                    <div class="status info">
-                        <strong>重要说明：</strong>
-                        <ol style="margin: 10px 0; padding-left: 20px;">
-                            <li>点击上方认证链接，会在新窗口中打开Google OAuth页面</li>
-                            <li>完成Google账号登录和授权</li>
-                            <li>授权成功后会跳转到localhost:8080显示成功页面</li>
-                            <li>关闭OAuth窗口，返回本页面</li>
-                            <li>点击下方"获取认证文件"按钮完成流程</li>
-                        </ol>
-                    </div>
-
-                    <!-- 快捷回调URL输入选项 -->
-                    <div class="form-group"
-                        style="margin: 20px 0; padding: 15px; border: 2px solid #e8f4fd; border-radius: 8px; background: #f8fcff;">
-                        <div style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;"
-                            onclick="toggleCallbackUrlSection()">
-                            <span style="font-weight: bold; color: #0066cc;">🚀 无法回源？试试快捷方式</span>
-                            <span id="callbackUrlToggleIcon"
-                                style="font-size: 14px; color: #666; transition: transform 0.3s ease;">▼</span>
-                        </div>
-                        <div id="callbackUrlSection" style="display: none;">
-                            <div
-                                style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
-                                <div style="color: #856404; font-size: 14px; font-weight: bold; margin-bottom: 6px;">📚
-                                    适用场景：</div>
-                                <ul
-                                    style="color: #856404; font-size: 13px; margin: 0; padding-left: 18px; line-height: 1.5;">
-                                    <li>云服务器、VPS等非本地环境</li>
-                                    <li>防火墙阻止了8080端口访问</li>
-                                    <li>网络环境无法正常回源到localhost</li>
-                                    <li>Docker容器内运行，端口映射问题</li>
-                                </ul>
-                            </div>
-                            <div style="color: #666; font-size: 13px; margin-bottom: 12px; line-height: 1.6;">
-                                <strong style="color: #0066cc;">🔍 什么是回调URL？</strong><br>
-                                完成Google OAuth授权后，浏览器地址栏显示的完整URL，通常看起来像这样：<br>
-                                <code
-                                    style="background: #f1f3f4; padding: 2px 6px; border-radius: 3px; font-size: 12px; word-break: break-all;">
-                                    http://localhost:8080/?state=abc123...&code=4/0AVMBsJ...&scope=email%20profile...
-                                </code>
-                            </div>
-                            <div
-                                style="background: #e7f3ff; border: 1px solid #b3d9ff; border-radius: 6px; padding: 10px; margin-bottom: 12px;">
-                                <div style="color: #0066cc; font-size: 13px; font-weight: bold; margin-bottom: 4px;">📋
-                                    使用步骤：</div>
-                                <ol
-                                    style="color: #0066cc; font-size: 12px; margin: 0; padding-left: 18px; line-height: 1.4;">
-                                    <li>点击上方认证链接，完成Google授权</li>
-                                    <li>授权成功后，复制浏览器地址栏的<strong>完整URL</strong></li>
-                                    <li>粘贴到下方输入框，点击获取凭证即可</li>
-                                </ol>
-                            </div>
-                            <div class="input-group">
-                                <input type="url" id="callbackUrlInput"
-                                    placeholder="粘贴完整的回调URL，例如：http://localhost:8080/?state=xxx&code=xxx&scope=xxx..."
-                                    style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 4px; font-size: 13px;">
-                            </div>
-                            <button class="btn" style="margin-top: 10px; background: #28a745; border-color: #28a745;"
-                                onclick="processCallbackUrl()">
-                                从回调URL获取凭证
-                            </button>
-                        </div>
-                    </div>
-
-                    <button class="btn" id="getCredsBtn" onclick="getCredentials()">获取认证文件</button>
-                </div>
-
-                <div id="credentialsSection" class="hidden">
-                    <h3>认证文件内容：</h3>
-                    <div class="credentials" id="credentialsContent"></div>
-                </div>
-            </div>
 
             <!-- 批量上传标签页 -->
             <div id="uploadTab" class="tab-content">
@@ -1270,10 +1148,6 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         <span class="stat-number" id="totalApiCalls">0</span>
                         <span class="stat-label">总调用数</span>
                     </div>
-                    <div class="stat-item normal" style="border-left: 4px solid #ff6b35;">
-                        <span class="stat-number" id="geminiProCalls">0</span>
-                        <span class="stat-label">Gemini 2.5 Pro</span>
-                    </div>
                     <div class="stat-item disabled">
                         <span class="stat-number" id="totalFiles">0</span>
                         <span class="stat-label">活跃文件数</span>
@@ -1282,8 +1156,6 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
 
                 <div class="manage-actions">
                     <button class="refresh-btn" onclick="refreshUsageStats()">刷新统计</button>
-                    <button class="btn" style="background-color: #dc3545;"
-                        onclick="resetAllUsageStats()">重置所有统计</button>
                 </div>
 
                 <!-- 文件使用统计列表 -->
@@ -1292,15 +1164,30 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     <div id="usageList"></div>
                 </div>
 
+                <div class="config-group">
+                    <h4>日志统计（按模型/按密钥）</h4>
+                    <div class="form-group" style="display:flex; gap:10px; flex-wrap:wrap">
+                        <select id="modelFilter" class="config-input" style="max-width:260px"></select>
+                        <select id="keyFilter" class="config-input" style="max-width:260px"></select>
+                        <select id="onlyFilter" class="config-input" style="max-width:180px">
+                            <option value="">全部</option>
+                            <option value="success">仅成功</option>
+                            <option value="fail">仅失败</option>
+                        </select>
+                        <button class="btn" onclick="refreshLogSummary()">刷新</button>
+                    </div>
+                    <div id="logSummaryModels"></div>
+                    <div id="logSummaryKeys" style="margin-top:12px"></div>
+                    <div id="modelRanking" class="ranking-container" style="margin-top:12px"></div>
+                </div>
+
                 <!-- 使用说明 -->
                 <div class="config-group">
                     <h4>使用说明</h4>
                     <div class="config-info">
                         <strong>统计范围：</strong>
                         <ul>
-                            <li><strong>Gemini 2.5 Pro 调用次数：</strong>仅统计 gemini-2.5-pro 及其变体模型的成功调用</li>
                             <li><strong>所有模型调用次数：</strong>统计所有模型的成功调用总数</li>
-                            <li><strong>每日配额：</strong>默认每日配额 Gemini 2.5 Pro: 100次，所有模型: 1000次</li>
                             <li><strong>配额重置：</strong>每天 UTC 07:00 自动重置调用计数</li>
                         </ul>
 
@@ -1315,7 +1202,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             </div>
 
             <!-- 配置管理标签页 -->
-            <div id="configTab" class="tab-content">
+            <div id="configTab" class="tab-content active">
                 <h3>配置管理</h3>
                 <p>管理系统配置参数，修改后立即生效</p>
 
@@ -1327,6 +1214,25 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 <div id="configSection">
                     <div class="loading" id="configLoading">正在加载配置...</div>
                     <div id="configForm" class="hidden">
+                        <div class="config-group">
+                            <h4>AssemblyAI 配置</h4>
+                            <div class="form-group">
+                                <label for="assemblyApiKeys">ASSEMBLY_API_KEYS</label>
+                                <textarea id="assemblyApiKeys" class="config-input" placeholder="每行一个 AssemblyAI API Key" style="min-height: 100px"></textarea>
+                                <small class="config-note">支持多个密钥，按行分隔；也可用逗号分隔</small>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="useAssembly" class="config-checkbox" /> 使用 AssemblyAI 作为上游
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="overrideEnv" class="config-checkbox" /> 面板优先（忽略环境变量）
+                                </label>
+                                <small class="config-note">启用后，面板保存的值将覆盖环境变量的优先级</small>
+                            </div>
+                        </div>
                         <div class="config-group">
                             <h4>服务器配置</h4>
 
@@ -1380,54 +1286,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                             </div>
                         </div>
 
-                        <div class="config-group">
-                            <h4>端点配置</h4>
-
-                            <!-- 快速配置按钮 -->
-                            <div class="form-group">
-                                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-                                    <button type="button" class="btn" onclick="useMirrorUrls()"
-                                        style="background-color: #28a745; font-size: 14px;">
-                                        🚀 一键使用镜像网址
-                                    </button>
-                                    <button type="button" class="btn" onclick="restoreOfficialUrls()"
-                                        style="background-color: #17a2b8; font-size: 14px;">
-                                        🔄 还原官方端点
-                                    </button>
-                                </div>
-                                <small class="config-note">镜像网址主要解决墙内无法访问官方端点的问题，部分地区可能无法使用</small>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="codeAssistEndpoint">Code Assist Endpoint:</label>
-                                <input type="text" id="codeAssistEndpoint" class="config-input" />
-                                <small class="config-note">Google Cloud Code Assist API端点地址</small>
-                            </div>
-                            <div class="form-group">
-                                <label for="oauthProxyUrl">OAuth Endpoint:</label>
-                                <input type="text" id="oauthProxyUrl" class="config-input"
-                                    placeholder="https://oauth2.googleapis.com" />
-                                <small class="config-note">Google OAuth2 API端点地址，用于token获取和刷新</small>
-                            </div>
-                            <div class="form-group">
-                                <label for="googleapisProxyUrl">Google APIs Endpoint:</label>
-                                <input type="text" id="googleapisProxyUrl" class="config-input"
-                                    placeholder="https://www.googleapis.com" />
-                                <small class="config-note">Google APIs API端点地址，用于API服务调用</small>
-                            </div>
-                            <div class="form-group">
-                                <label for="resourceManagerApiUrl">Resource Manager API Endpoint:</label>
-                                <input type="text" id="resourceManagerApiUrl" class="config-input"
-                                    placeholder="https://cloudresourcemanager.googleapis.com" />
-                                <small class="config-note">Google Cloud Resource Manager API端点地址，用于项目管理</small>
-                            </div>
-                            <div class="form-group">
-                                <label for="serviceUsageApiUrl">Service Usage API Endpoint:</label>
-                                <input type="text" id="serviceUsageApiUrl" class="config-input"
-                                    placeholder="https://serviceusage.googleapis.com" />
-                                <small class="config-note">Google Cloud Service Usage API端点地址，用于服务启用管理</small>
-                            </div>
-                        </div>
+                        
 
                         <div class="config-group">
                             <h4>自动封禁配置</h4>
@@ -1485,74 +1344,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         </div>
 
 
-                        <div class="config-group">
-                            <h4>兼容性配置</h4>
-
-                            <div class="form-group">
-                                <label>
-                                    <input type="checkbox" id="compatibilityModeEnabled" class="config-checkbox" />
-                                    启用兼容性模式
-                                </label>
-                                <small class="config-note">启用后所有system消息全部转换成user，停用system_instructions <span
-                                        style="color: #28a745;">✓ 支持热更新</span></small>
-                                <div class="config-info"
-                                    style="background-color: #fff3cd; border: 1px solid #ffc107; color: #856404;">
-                                    <strong>⚠️ 注意：</strong>该选项可能会降低模型理解能力，但是能避免流式空回的情况。
-                                    <br><strong>适用场景：</strong>当遇到流式传输时模型不返回内容或返回空响应时启用此选项。
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="config-group">
-                            <h4>抗截断配置</h4>
-
-                            <div class="form-group">
-                                <label for="antiTruncationMaxAttempts">抗截断最大重试次数:</label>
-                                <input type="number" id="antiTruncationMaxAttempts" class="config-input" min="1"
-                                    max="10" />
-                                <small class="config-note">当检测到输出截断时的最大续传尝试次数</small>
-                            </div>
-
-                            <div class="form-group">
-                                <div class="config-info">
-                                    <strong>注意：</strong>抗截断功能现在通过模型名控制：
-                                    <ul style="margin: 5px 0; padding-left: 20px;">
-                                        <li>选择带有 "-流式抗截断" 后缀的模型即可启用</li>
-                                        <li>该功能仅在流式传输时生效</li>
-                                        <li>例如: "gemini-2.5-pro-流式抗截断"</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="config-group">
-                            <h4>配置热更新说明</h4>
-
-                            <div class="form-group">
-                                <div class="config-info"
-                                    style="background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724;">
-                                    <strong>🔥 热更新配置（立即生效）：</strong>
-                                    <ul style="margin: 8px 0; padding-left: 20px; color: #212529;">
-                                        <li><strong>网络配置：</strong>代理设置、端点配置、HTTP超时时间、最大连接数</li>
-                                        <li><strong>API配置：</strong>凭证轮换次数、429重试设置、自动封禁配置</li>
-                                        <li><strong>密码配置：</strong>API密码、控制面板密码、通用密码</li>
-                                        <li><strong>功能配置：</strong>抗截断最大重试次数</li>
-                                    </ul>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <div class="config-info"
-                                    style="background-color: #fff3cd; border: 1px solid #ffc107; color: #856404;">
-                                    <strong>🔄 需要重启的配置：</strong>
-                                    <ul style="margin: 8px 0; padding-left: 20px; color: #212529;">
-                                        <li><strong>服务器配置：</strong>主机地址、端口号</li>
-                                        <li><strong>目录配置：</strong>凭证目录路径、Code Assist端点</li>
-                                    </ul>
-                                </div>
-                            </div>
-
-                        </div>
+                        
                     </div>
                 </div>
             </div>
@@ -1594,86 +1386,72 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 </div>
             </div>
 
-            <!-- 项目信息标签页 -->
-            <div id="aboutTab" class="tab-content">
-                <h3>项目信息</h3>
-                <p>关于GCLI2API项目的详细信息和支持方式</p>
-
-                <!-- 项目介绍 -->
-                <div
-                    style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #007bff;">
-                    <h4 style="margin-top: 0; color: #007bff;">📋 项目简介</h4>
-                    <p style="margin: 10px 0; line-height: 1.6; color: #495057;">
-                        GCLI2API是一个将Google Gemini API转换为OpenAI 和GEMINI API格式的代理工具，支持多账户管理、自动轮换、实时日志监控等功能。
-                    </p>
-                    <div style="margin: 15px 0;">
-                        <p style="margin: 5px 0;"><strong>🔗 项目地址：</strong> <a
-                                href="https://github.com/su-kaka/gcli2api" target="_blank"
-                                style="color: #007bff; text-decoration: none;">GitHub - su-kaka/gcli2api</a></p>
-                        <p style="margin: 5px 0;"><strong>⚠️ 使用声明：</strong> <span
-                                style="color: #dc3545; font-weight: 500;">禁止商业用途和倒卖 - 仅供学习使用</span></p>
-                    </div>
-                </div>
-
-                <!-- 功能特性 -->
-                <div
-                    style="background-color: #e7f3ff; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #17a2b8;">
-                    <h4 style="margin-top: 0; color: #17a2b8;">✨ 主要功能</h4>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
-                        <div>
-                            <p><strong>🔄 多账户管理：</strong> 支持批量上传和管理多个Google账户</p>
-                            <p><strong>⚡ 自动轮换：</strong> 智能轮换账户，避免单账户限额</p>
-                            <p><strong>📊 实时监控：</strong> 使用统计、错误监控、实时日志</p>
+            <!-- 操练场标签页 -->
+            <div id="playgroundTab" class="tab-content">
+                <h3>操练场</h3>
+                <div class="config-group">
+                    <div class="form-group" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end">
+                        <div style="flex:1; min-width:240px">
+                            <label for="playgroundModel">模型</label>
+                            <select id="playgroundModel" class="config-input" style="width:100%"></select>
                         </div>
                         <div>
-                            <p><strong>🛡️ 安全可靠：</strong> OAuth2认证、自动封禁异常账户</p>
-                            <p><strong>🎛️ 配置灵活：</strong> 支持热更新配置、代理设置</p>
-                            <p><strong>📱 界面友好：</strong> 响应式设计、移动端适配</p>
+                            <label for="playgroundTemperature">temperature</label>
+                            <input type="number" id="playgroundTemperature" class="config-input" step="0.1" min="0" max="2" value="0.5" style="width:120px" />
+                        </div>
+                        <div>
+                            <label for="playgroundMaxTokens">max_tokens</label>
+                            <input type="number" id="playgroundMaxTokens" class="config-input" min="1" max="128000" value="4096" style="width:140px" />
+                        </div>
+                        <div>
+                            <label for="playgroundStream">stream</label>
+                            <input type="checkbox" id="playgroundStream" class="config-input" style="width:auto" />
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap">
+                            <button class="btn" style="width:auto" onclick="addMessageRow()">添加消息</button>
+                            <button class="btn" style="background:#6c757d; width:auto" onclick="clearMessages()">清空消息</button>
+                            <button class="btn" style="background:#007bff; width:auto" onclick="sendPlayground()">发送测试</button>
                         </div>
                     </div>
                 </div>
-
-                <!-- 支持项目 -->
-                <div
-                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 15px; margin: 30px 0; text-align: center; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);">
-                    <h4 style="margin: 0 0 15px 0; font-size: 24px; font-weight: 600;">💝 支持项目发展</h4>
-                    <p style="margin: 0 0 25px 0; font-size: 16px; opacity: 0.9; line-height: 1.6;">
-                        如果这个项目对您有帮助，欢迎通过币安扫码捐赠支持项目的持续发展！<br>
-                        您的每一份支持都是我们前进的动力 ❤️
-                    </p>
-
-                    <div
-                        style="display: inline-block; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 25px rgba(0,0,0,0.1);">
-                        <img src="docs/币安.jpg" alt="币安捐赠二维码"
-                            style="width: 200px; height: 200px; border-radius: 10px; display: block;">
-                        <p style="color: #666; margin: 12px 0 0 0; font-size: 14px; font-weight: 600;">扫码币安捐赠</p>
+                <div class="config-group">
+                    <h4>会话消息</h4>
+                    <div id="playgroundMessages"></div>
+                </div>
+                <div class="config-group">
+                    <h4>工具/函数定义（JSON）</h4>
+                    <div class="form-group">
+                        <textarea id="playgroundToolsJson" class="config-input" placeholder='[{"type":"function","function":{"name":"get_weather","parameters":{"type":"object","properties":{"city":{"type":"string"}}}}}]' style="min-height:100px"></textarea>
+                        <small class="config-note">留空则不启用工具调用；内容需为合法 JSON</small>
                     </div>
                 </div>
-
-                <!-- 联系和反馈 -->
-                <div
-                    style="background-color: #d1ecf1; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #bee5eb;">
-                    <h4 style="margin-top: 0; color: #0c5460;">📞 联系我们</h4>
-                    <div style="color: #0c5460; line-height: 1.6;">
-                        <p>• <strong>问题反馈：</strong> 通过GitHub Issues提交问题和建议</p>
-                        <p>• <strong>功能请求：</strong> 在GitHub Discussions中讨论新功能</p>
-                        <p>• <strong>代码贡献：</strong> 欢迎提交Pull Request改进项目</p>
-                        <p>• <strong>文档完善：</strong> 帮助改进项目文档和使用指南</p>
+                <div class="config-group">
+                    <h4>结果</h4>
+                    <div class="form-group" style="display:flex; gap:12px; flex-wrap:wrap; align-items:stretch">
+                        <div class="card" style="padding:12px; flex:1; min-width:280px">
+                            <div><strong>Response</strong></div>
+                            <div id="playgroundOutputContent" style="white-space:pre-wrap; margin-top:6px; max-height:240px; overflow:auto"></div>
+                        </div>
+                        <div class="card" style="padding:12px; flex:0 0 280px; min-width:240px">
+                            <div><strong>Meta</strong></div>
+                            <div style="margin-top:6px">
+                                <div>Request ID: <span id="playgroundRequestId"></span></div>
+                                <div>Tokens used: <span id="playgroundTokensUsed"></span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>原始响应</label>
+                        <pre id="playgroundRawJson" style="background-color:#1e1e1e; color:#ffffff; font-family:'Courier New', monospace; font-size:12px; height:320px; overflow-y:auto; border:1px solid #333; border-radius:5px; padding:12px; white-space:pre-wrap; word-break:break-all"></pre>
                     </div>
                 </div>
             </div>
+
+            
 
             <div id="statusSection"></div>
 
-            <!-- 项目信息 -->
-            <div
-                style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px; margin-top: 30px; text-align: center; border-left: 4px solid #007bff;">
-                <p style="margin: 5px 0; font-size: 14px; color: #495057;">GitHub: <a
-                        href="https://github.com/su-kaka/gcli2api" target="_blank"
-                        style="color: #007bff; text-decoration: none;">https://github.com/su-kaka/gcli2api</a></p>
-                <p style="margin: 5px 0; font-size: 14px; color: #dc3545; font-weight: 500;">⚠️ 禁止商业用途和倒卖 - 仅供学习使用 ⚠️
-                </p>
-            </div>
+            
         </div>
     </div>
 
@@ -1688,11 +1466,6 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 <div class="form-group">
                     <label for="modalFilename">文件名:</label>
                     <input type="text" id="modalFilename" class="config-input" readonly />
-                </div>
-                <div class="form-group">
-                    <label for="modalGeminiLimit">Gemini 2.5 Pro 每日限制:</label>
-                    <input type="number" id="modalGeminiLimit" class="config-input" min="1" max="10000" />
-                    <small class="config-note">每日Gemini 2.5 Pro模型调用次数限制</small>
                 </div>
                 <div class="form-group">
                     <label for="modalTotalLimit">所有模型每日限制:</label>
@@ -1743,41 +1516,17 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         async function login() {
             console.log('Login function called');
             const password = document.getElementById('loginPassword').value;
-            console.log('Password length:', password ? password.length : 0);
-
             if (!password) {
                 showStatus('请输入密码', 'error');
                 return;
             }
-
-            try {
-                console.log('Sending login request...');
-                const response = await fetch('/auth/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ password: password })
-                });
-
-                console.log('Login response status:', response.status);
-                const data = await response.json();
-                console.log('Login response data:', data);
-
-                if (response.ok) {
-                    authToken = data.token;
-                    console.log('Login successful, token received');
-                    document.getElementById('loginSection').classList.add('hidden');
-                    document.getElementById('mainSection').classList.remove('hidden');
-                    showStatus('登录成功', 'success');
-                } else {
-                    console.log('Login failed:', data);
-                    showStatus(`登录失败: ${data.detail || data.error || '未知错误'}`, 'error');
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                showStatus(`网络错误: ${error.message}`, 'error');
-            }
+            authToken = password;
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('mainSection').classList.remove('hidden');
+            showStatus('登录成功', 'success');
+            switchTab('config');
+            await loadConfig();
+            await refreshUsageStats();
         }
 
         function handlePasswordEnter(event) {
@@ -1788,33 +1537,27 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
 
         // 标签页切换
         function switchTab(tabName) {
-            // 移除所有活动标签
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-            // 激活选中标签
-            event.target.classList.add('active');
-            document.getElementById(tabName + 'Tab').classList.add('active');
-
-            // 如果切换到文件管理页面，自动加载数据
-            if (tabName === 'manage') {
-                refreshCredsStatus();
-            }
-            // 如果切换到使用统计页面，自动加载统计
+            const contentEl = document.getElementById(tabName + 'Tab');
+            if (contentEl) contentEl.classList.add('active');
+            const buttons = document.querySelectorAll('.tabs .tab');
+            buttons.forEach(btn => {
+                const onclick = btn.getAttribute('onclick') || '';
+                if (onclick.includes("'" + tabName + "'")) btn.classList.add('active');
+            });
             if (tabName === 'usage') {
                 refreshUsageStats();
+                refreshLogSummary();
             }
-            // 如果切换到配置管理页面，自动加载配置
             if (tabName === 'config') {
                 loadConfig();
             }
-            // 如果切换到环境变量页面，自动检查状态
-            if (tabName === 'envload') {
-                checkEnvCredsStatus();
-            }
-            // 如果切换到日志页面，自动连接WebSocket
             if (tabName === 'logs') {
                 connectWebSocket();
+            }
+            if (tabName === 'playground') {
+                initPlayground();
             }
         }
 
@@ -2207,7 +1950,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
 
             try {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const wsUrl = `${protocol}//${window.location.host}/auth/logs/stream`;
+                const wsUrl = `${protocol}//${window.location.host}/auth/logs/stream?token=${encodeURIComponent(authToken)}`;
 
                 document.getElementById('connectionStatusText').textContent = '连接中...';
                 document.getElementById('logConnectionStatus').className = 'status info';
@@ -2850,22 +2593,14 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         async function loadConfig() {
             const configLoading = document.getElementById('configLoading');
             const configForm = document.getElementById('configForm');
-
             try {
                 configLoading.style.display = 'block';
                 configForm.classList.add('hidden');
-
-                const response = await fetch('/config/get', {
-                    method: 'GET',
-                    headers: getAuthHeaders()
-                });
-
+                const response = await fetch('/config/get', { method: 'GET', headers: getAuthHeaders() });
                 const data = await response.json();
-
                 if (response.ok) {
-                    currentConfig = data.config;
+                    currentConfig = data.config || {};
                     envLockedFields = new Set(data.env_locked || []);
-
                     populateConfigForm();
                     configForm.classList.remove('hidden');
                     showStatus('配置加载成功', 'success');
@@ -2873,7 +2608,6 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     showStatus(`加载配置失败: ${data.detail || data.error || '未知错误'}`, 'error');
                 }
             } catch (error) {
-                console.error('loadConfig error:', error);
                 showStatus(`网络错误: ${error.message}`, 'error');
             } finally {
                 configLoading.style.display = 'none';
@@ -2881,41 +2615,58 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         }
 
         function populateConfigForm() {
-            // 服务器配置
-            setConfigField('host', currentConfig.host || '0.0.0.0');
-            setConfigField('port', currentConfig.port || 7861);
-            setConfigField('configApiPassword', currentConfig.api_password || '');
-            setConfigField('configPanelPassword', currentConfig.panel_password || '');
-            setConfigField('configPassword', currentConfig.password || 'pwd');
+            const hostEl = document.getElementById('host');
+            const portEl = document.getElementById('port');
+            const apiPwdEl = document.getElementById('configApiPassword');
+            const panelPwdEl = document.getElementById('configPanelPassword');
+            const aaiKeysEl = document.getElementById('assemblyApiKeys');
+            const useAssemblyEl = document.getElementById('useAssembly');
+            const overrideEl = document.getElementById('overrideEnv');
+            if (hostEl) hostEl.value = currentConfig.host || '0.0.0.0';
+            if (portEl) portEl.value = currentConfig.port || 7861;
+            if (apiPwdEl) apiPwdEl.value = currentConfig.api_password || '';
+            if (panelPwdEl) panelPwdEl.value = currentConfig.panel_password || '';
+            if (aaiKeysEl) {
+                const list = currentConfig.assembly_api_keys || [];
+                const single = currentConfig.assembly_api_key || '';
+                const lines = Array.isArray(list) && list.length > 0 ? list : (single ? [single] : []);
+                aaiKeysEl.value = lines.join('\n');
+            }
+            if (useAssemblyEl) useAssemblyEl.checked = !!currentConfig.use_assembly;
+            if (overrideEl) overrideEl.checked = !!currentConfig.override_env;
+            lockField('assemblyApiKeys','ASSEMBLY_API_KEYS');
+            lockField('useAssembly','USE_ASSEMBLY');
+            lockField('configApiPassword','API_PASSWORD');
+            lockField('configPanelPassword','PANEL_PASSWORD');
+            lockField('port','PORT');
+            lockField('host','HOST');
+            const overrideEl2 = document.getElementById('overrideEnv');
+            if (overrideEl2) {
+                overrideEl2.addEventListener('change', applyLocks);
+            }
+        }
 
-            // 基础配置
-            setConfigField('credentialsDir', currentConfig.credentials_dir || '');
-            setConfigField('proxy', currentConfig.proxy || '');
+        function applyLocks(){
+            lockField('assemblyApiKeys','ASSEMBLY_API_KEYS');
+            lockField('useAssembly','USE_ASSEMBLY');
+            lockField('configApiPassword','API_PASSWORD');
+            lockField('configPanelPassword','PANEL_PASSWORD');
+            lockField('port','PORT');
+            lockField('host','HOST');
+        }
 
-            // 端点配置
-            setConfigField('codeAssistEndpoint', currentConfig.code_assist_endpoint || '');
-            setConfigField('oauthProxyUrl', currentConfig.oauth_proxy_url || '');
-            setConfigField('googleapisProxyUrl', currentConfig.googleapis_proxy_url || '');
-            setConfigField('resourceManagerApiUrl', currentConfig.resource_manager_api_url || '');
-            setConfigField('serviceUsageApiUrl', currentConfig.service_usage_api_url || '');
-
-            // 自动封禁配置
-            document.getElementById('autoBanEnabled').checked = Boolean(currentConfig.auto_ban_enabled);
-            setConfigField('autoBanErrorCodes', (currentConfig.auto_ban_error_codes || []).join(','));
-
-            // 性能配置
-            setConfigField('callsPerRotation', currentConfig.calls_per_rotation || 10);
-
-            // 429重试配置
-            document.getElementById('retry429Enabled').checked = Boolean(currentConfig.retry_429_enabled);
-            setConfigField('retry429MaxRetries', currentConfig.retry_429_max_retries || 20);
-            setConfigField('retry429Interval', currentConfig.retry_429_interval || 0.1);
-
-            // 兼容性配置
-            document.getElementById('compatibilityModeEnabled').checked = Boolean(currentConfig.compatibility_mode_enabled);
-
-            // 抗截断配置
-            setConfigField('antiTruncationMaxAttempts', currentConfig.anti_truncation_max_attempts || 3);
+        function lockField(id, envName) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const overrideEl = document.getElementById('overrideEnv');
+            const overrideOn = overrideEl && overrideEl.checked;
+            if (envLockedFields.has(envName) && !overrideOn) {
+                el.disabled = true;
+                el.classList.add('env-locked');
+            } else {
+                el.disabled = false;
+                el.classList.remove('env-locked');
+            }
         }
 
         function setConfigField(fieldId, value) {
@@ -2936,72 +2687,25 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         }
 
         async function saveConfig() {
+            const payload = {
+                assembly_api_keys: document.getElementById('assemblyApiKeys').value.split(/\n|,/).map(s=>s.trim()).filter(s=>s.length>0),
+                use_assembly: document.getElementById('useAssembly').checked,
+                override_env: document.getElementById('overrideEnv').checked,
+                api_password: document.getElementById('configApiPassword').value.trim(),
+                panel_password: document.getElementById('configPanelPassword').value.trim(),
+                host: document.getElementById('host').value.trim(),
+                port: parseInt(document.getElementById('port').value) || 7861
+            };
             try {
-                // 调试：检查password字段的实际值
-                const passwordElement = document.getElementById('configPassword');
-                console.log('DEBUG: configPassword元素:', passwordElement);
-                console.log('DEBUG: configPassword值:', passwordElement ? passwordElement.value : 'ELEMENT_NOT_FOUND');
-
-                const config = {
-                    host: document.getElementById('host').value.trim(),
-                    port: parseInt(document.getElementById('port').value) || 7861,
-                    api_password: document.getElementById('configApiPassword').value.trim(),
-                    panel_password: document.getElementById('configPanelPassword').value.trim(),
-                    password: document.getElementById('configPassword').value.trim(),
-                    code_assist_endpoint: document.getElementById('codeAssistEndpoint').value.trim(),
-                    credentials_dir: document.getElementById('credentialsDir').value.trim(),
-                    proxy: document.getElementById('proxy').value.trim(),
-                    // 端点配置
-                    oauth_proxy_url: document.getElementById('oauthProxyUrl').value.trim(),
-                    googleapis_proxy_url: document.getElementById('googleapisProxyUrl').value.trim(),
-                    resource_manager_api_url: document.getElementById('resourceManagerApiUrl').value.trim(),
-                    service_usage_api_url: document.getElementById('serviceUsageApiUrl').value.trim(),
-                    auto_ban_enabled: document.getElementById('autoBanEnabled').checked,
-                    auto_ban_error_codes: document.getElementById('autoBanErrorCodes').value
-                        .split(',')
-                        .map(code => parseInt(code.trim()))
-                        .filter(code => !isNaN(code)),
-                    calls_per_rotation: parseInt(document.getElementById('callsPerRotation').value) || 10,
-                    retry_429_enabled: document.getElementById('retry429Enabled').checked,
-                    retry_429_max_retries: parseInt(document.getElementById('retry429MaxRetries').value) || 20,
-                    retry_429_interval: parseFloat(document.getElementById('retry429Interval').value) || 0.1,
-                    // 兼容性配置
-                    compatibility_mode_enabled: document.getElementById('compatibilityModeEnabled').checked,
-                    // 抗截断配置
-                    anti_truncation_max_attempts: parseInt(document.getElementById('antiTruncationMaxAttempts').value) || 3
-                };
-
-                const response = await fetch('/config/save', {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ config: config })
-                });
-
+                const response = await fetch('/config/save', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
                 const data = await response.json();
-
                 if (response.ok) {
-                    let message = '配置保存成功';
-
-                    // 处理热更新状态信息
-                    if (data.hot_updated && data.hot_updated.length > 0) {
-                        message += `，以下配置已立即生效: ${data.hot_updated.join(', ')}`;
-                    }
-
-                    // 处理重启提醒
-                    if (data.restart_required && data.restart_required.length > 0) {
-                        message += `\n⚠️ 重启提醒: ${data.restart_notice}`;
-                        showStatus(message, 'info');
-                    } else {
-                        showStatus(message, 'success');
-                    }
-
-                    // 重新加载配置以获取最新状态
-                    setTimeout(() => loadConfig(), 1000);
+                    showStatus('配置保存成功', 'success');
+                    setTimeout(() => loadConfig(), 500);
                 } else {
                     showStatus(`保存配置失败: ${data.detail || data.error || '未知错误'}`, 'error');
                 }
             } catch (error) {
-                console.error('saveConfig error:', error);
                 showStatus(`网络错误: ${error.message}`, 'error');
             }
         }
@@ -3519,26 +3223,139 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 const aggregatedData = await aggregatedResponse.json();
 
                 if (statsResponse.ok && aggregatedResponse.ok) {
-                    usageStatsData = statsData.data;
+                    if (statsData && statsData.filename) {
+                        const { filename, ...rest } = statsData;
+                        usageStatsData = {};
+                        usageStatsData[filename] = rest;
+                    } else {
+                        usageStatsData = statsData || {};
+                    }
 
-                    // 更新概览统计
-                    document.getElementById('totalApiCalls').textContent = aggregatedData.data.total_all_model_calls || 0;
-                    document.getElementById('geminiProCalls').textContent = aggregatedData.data.total_gemini_2_5_pro_calls || 0;
-                    document.getElementById('totalFiles').textContent = aggregatedData.data.total_files || 0;
+                    document.getElementById('totalApiCalls').textContent = aggregatedData.total_all_model_calls || 0;
+                    document.getElementById('totalFiles').textContent = aggregatedData.total_files || 0;
 
                     // 渲染使用统计列表
                     renderUsageList();
 
-                    showStatus(`已加载 ${aggregatedData.data.total_files} 个文件的使用统计`, 'success');
+                    showStatus(`已加载 ${aggregatedData.total_files} 个文件的使用统计`, 'success');
                 } else {
                     showStatus('加载使用统计失败', 'error');
                 }
             } catch (error) {
-                console.error('refreshUsageStats error:', error);
                 showStatus(`网络错误: ${error.message}`, 'error');
             } finally {
                 usageLoading.style.display = 'none';
             }
+        }
+
+        async function refreshLogSummary() {
+            const model = document.getElementById('modelFilter').value || '';
+            const key = (document.getElementById('keyFilter').value || '').trim();
+            const only = document.getElementById('onlyFilter').value || '';
+            let url = '/usage/aggregated';
+            const params = [];
+            if (model) params.push('model=' + encodeURIComponent(model));
+            if (key) params.push('key=' + encodeURIComponent(key));
+            if (only) params.push('only=' + encodeURIComponent(only));
+            if (params.length) url += '?' + params.join('&');
+            const res = await fetch(url, { headers: getAuthHeaders() });
+            const data = await res.json();
+            const ls = data.log_summary || {models:{},keys:{},total:{}};
+            renderLogSummary(ls);
+            if (!model) populateModelFilter(ls);
+            populateKeyFilter(ls);
+            renderModelRanking(ls);
+        }
+
+        function populateModelFilter(data){
+            const sel = document.getElementById('modelFilter');
+            const prev = sel.value;
+            sel.innerHTML = '';
+            const opt0 = document.createElement('option');
+            opt0.value = '';
+            opt0.textContent = '全部模型';
+            sel.appendChild(opt0);
+            Object.keys(data.models||{}).forEach(m=>{
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                sel.appendChild(opt);
+            });
+            sel.value = prev;
+        }
+
+        function populateKeyFilter(data){
+            const sel = document.getElementById('keyFilter');
+            const prev = sel.value;
+            sel.innerHTML = '';
+            const opt0 = document.createElement('option');
+            opt0.value = '';
+            opt0.textContent = '全部密钥';
+            sel.appendChild(opt0);
+            Object.keys(data.keys||{}).forEach(k=>{
+                const opt = document.createElement('option');
+                opt.value = k;
+                opt.textContent = k;
+                sel.appendChild(opt);
+            });
+            sel.value = prev;
+        }
+
+        function renderLogSummary(data){
+            const mDiv = document.getElementById('logSummaryModels');
+            const kDiv = document.getElementById('logSummaryKeys');
+            const models = data.models||{};
+            const keys = data.keys||{};
+            let mHtml = '<table class="table"><thead><tr><th>模型</th><th>成功</th><th>失败</th></tr></thead><tbody>';
+            Object.entries(models).forEach(([m,v])=>{
+                mHtml += `<tr><td>${m}</td><td>${v.ok||0}</td><td>${v.fail||0}</td></tr>`;
+            });
+            mHtml += '</tbody></table>';
+            let kHtml = '<table class="table"><thead><tr><th>密钥</th><th>成功</th><th>失败</th><th>模型分布</th></tr></thead><tbody>';
+            Object.entries(keys).forEach(([kk,v])=>{
+                const md = v.models||{};
+                const mdStr = Object.entries(md).map(([m,c])=>`${m}: ${c.ok||0}/${c.fail||0}`).join(', ');
+                kHtml += `<tr><td>${kk}</td><td>${v.ok||0}</td><td>${v.fail||0}</td><td>${mdStr}</td></tr>`;
+            });
+            kHtml += '</tbody></table>';
+            mDiv.innerHTML = mHtml;
+            kDiv.innerHTML = kHtml;
+        }
+
+        function renderModelRanking(data){
+            const only = document.getElementById('onlyFilter').value || '';
+            const models = data.models || {};
+            const entries = Object.entries(models).map(([name, v])=>{
+                const ok = v.ok || 0;
+                const fail = v.fail || 0;
+                const count = only==='success' ? ok : (only==='fail' ? fail : (ok + fail));
+                return { name, ok, fail, count };
+            }).filter(e=> e.count > 0);
+            entries.sort((a,b)=> b.count - a.count);
+            const max = Math.max(1, ...entries.map(e=> e.count));
+            const total = entries.reduce((sum,e)=> sum + e.count, 0);
+            let html = `<div class="ranking-header"><div>模型调用次数排行</div><div style="font-size:12px; color:#666;">总计: ${total}</div></div>`;
+            html += `<div class="legend"><div><span class="success-dot"></span>成功</div><div><span class="fail-dot"></span>失败</div></div>`;
+            html += `<div class="ranking-list">`;
+            entries.forEach(e=>{
+                const totalWidth = Math.round((e.count / max) * 100);
+                let okW = 0, failW = 0;
+                if (only === 'success') {
+                    okW = totalWidth;
+                    failW = 0;
+                } else if (only === 'fail') {
+                    okW = 0;
+                    failW = totalWidth;
+                } else {
+                    const ratio = e.count ? (e.ok / e.count) : 0;
+                    okW = Math.round(totalWidth * ratio);
+                    failW = totalWidth - okW;
+                }
+                html += `<div class="ranking-item"><div class="ranking-label" title="${e.name}">${e.name}</div><div class="ranking-bar"><div class="ranking-bar-success" style="width:${okW}%"></div><div class="ranking-bar-fail" style="width:${failW}%; left:${okW}%"></div></div><div class="ranking-count">${e.count}</div></div>`;
+            });
+            html += `</div>`;
+            const container = document.getElementById('modelRanking');
+            if (container) container.innerHTML = html;
         }
 
         // 渲染使用统计列表
@@ -3563,15 +3380,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             div.className = 'usage-card';
 
             // 计算使用百分比
-            const geminiPercent = Math.min((stats.gemini_2_5_pro_calls / stats.daily_limit_gemini_2_5_pro) * 100, 100);
             const totalPercent = Math.min((stats.total_calls / stats.daily_limit_total) * 100, 100);
-
-            // 确定进度条颜色
-            function getProgressClass(percent) {
-                if (percent >= 90) return 'danger';
-                if (percent >= 70) return 'warning';
-                return 'gemini';
-            }
 
             function getTotalProgressClass(percent) {
                 if (percent >= 90) return 'danger';
@@ -3597,16 +3406,6 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 
                 <div class="usage-progress">
                     <div class="usage-progress-label">
-                        <span>Gemini 2.5 Pro</span>
-                        <span>${stats.gemini_2_5_pro_calls}/${stats.daily_limit_gemini_2_5_pro} (${geminiPercent.toFixed(1)}%)</span>
-                    </div>
-                    <div class="usage-progress-bar">
-                        <div class="usage-progress-fill ${getProgressClass(geminiPercent)}" style="width: ${geminiPercent}%"></div>
-                    </div>
-                </div>
-                
-                <div class="usage-progress">
-                    <div class="usage-progress-label">
                         <span>所有模型</span>
                         <span>${stats.total_calls}/${stats.daily_limit_total} (${totalPercent.toFixed(1)}%)</span>
                     </div>
@@ -3624,7 +3423,6 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 
                 <div class="usage-actions">
                     <button class="usage-btn limits" onclick="openLimitsModal('${filename}')">设置限制</button>
-                    <button class="usage-btn reset" onclick="resetSingleUsageStats('${filename}')">重置统计</button>
                 </div>
             `;
 
@@ -3641,7 +3439,6 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
 
             currentEditingFile = filename;
             document.getElementById('modalFilename').value = filename;
-            document.getElementById('modalGeminiLimit').value = stats.daily_limit_gemini_2_5_pro;
             document.getElementById('modalTotalLimit').value = stats.daily_limit_total;
             document.getElementById('limitsModal').style.display = 'block';
         }
@@ -3654,14 +3451,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
 
         // 保存限制设置
         async function saveLimits() {
-            const geminiLimit = parseInt(document.getElementById('modalGeminiLimit').value);
             const totalLimit = parseInt(document.getElementById('modalTotalLimit').value);
-
-            if (isNaN(geminiLimit) || geminiLimit < 1) {
-                showStatus('Gemini 2.5 Pro 限制必须是大于0的数字', 'error');
-                return;
-            }
-
             if (isNaN(totalLimit) || totalLimit < 1) {
                 showStatus('总调用限制必须是大于0的数字', 'error');
                 return;
@@ -3673,7 +3463,6 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     headers: getAuthHeaders(),
                     body: JSON.stringify({
                         filename: currentEditingFile,
-                        gemini_2_5_pro_limit: geminiLimit,
                         total_limit: totalLimit
                     })
                 });
@@ -3694,59 +3483,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             }
         }
 
-        // 重置单个文件的使用统计
-        async function resetSingleUsageStats(filename) {
-            if (!confirm(`确定要重置 ${filename} 的使用统计吗？`)) {
-                return;
-            }
-
-            try {
-                const response = await fetch('/usage/reset', {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ filename: filename })
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    showStatus(data.message, 'success');
-                    await refreshUsageStats();
-                } else {
-                    showStatus(`重置失败: ${data.detail || data.error || '未知错误'}`, 'error');
-                }
-            } catch (error) {
-                console.error('resetSingleUsageStats error:', error);
-                showStatus(`网络错误: ${error.message}`, 'error');
-            }
-        }
-
-        // 重置所有使用统计
-        async function resetAllUsageStats() {
-            if (!confirm('确定要重置所有文件的使用统计吗？此操作不可恢复！')) {
-                return;
-            }
-
-            try {
-                const response = await fetch('/usage/reset', {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({})  // 不提供filename表示重置所有
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    showStatus(data.message, 'success');
-                    await refreshUsageStats();
-                } else {
-                    showStatus(`重置失败: ${data.detail || data.error || '未知错误'}`, 'error');
-                }
-            } catch (error) {
-                console.error('resetAllUsageStats error:', error);
-                showStatus(`网络错误: ${error.message}`, 'error');
-            }
-        }
+        
 
         // 关闭弹窗当点击弹窗外部时
         window.onclick = function (event) {
@@ -3756,60 +3493,151 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             }
         }
 
-        // =====================================================================
-        // 端点配置快速切换函数
-        // =====================================================================
-
-        // 镜像网址配置
-        const mirrorUrls = {
-            codeAssistEndpoint: 'https://gcli-api.sukaka.top/cloudcode-pa',
-            oauthProxyUrl: 'https://gcli-api.sukaka.top/oauth2',
-            googleapisProxyUrl: 'https://gcli-api.sukaka.top/googleapis',
-            resourceManagerApiUrl: 'https://gcli-api.sukaka.top/cloudresourcemanager',
-            serviceUsageApiUrl: 'https://gcli-api.sukaka.top/serviceusage'
-        };
-
-        // 官方端点配置
-        const officialUrls = {
-            codeAssistEndpoint: 'https://cloudcode-pa.googleapis.com',
-            oauthProxyUrl: 'https://oauth2.googleapis.com',
-            googleapisProxyUrl: 'https://www.googleapis.com',
-            resourceManagerApiUrl: 'https://cloudresourcemanager.googleapis.com',
-            serviceUsageApiUrl: 'https://serviceusage.googleapis.com'
-        };
-
-        // 使用镜像网址
-        function useMirrorUrls() {
-            if (confirm('确定要将所有端点配置为镜像网址吗？\n\n镜像网址：\n• Code Assist: https://gcli-api.sukaka.top/cloudcode-pa\n• OAuth: https://gcli-api.sukaka.top/oauth2\n• Google APIs: https://gcli-api.sukaka.top/googleapis\n• Resource Manager: https://gcli-api.sukaka.top/cloudresourcemanager\n• Service Usage: https://gcli-api.sukaka.top/serviceusage')) {
-
-                // 设置所有端点为镜像网址
-                for (const [fieldId, url] of Object.entries(mirrorUrls)) {
-                    const field = document.getElementById(fieldId);
-                    if (field && !field.disabled) {
-                        field.value = url;
-                    }
-                }
-
-                showStatus('✅ 已切换到镜像网址配置，记得点击"保存配置"按钮保存设置', 'success');
-            }
-        }
-
-        // 还原官方端点
-        function restoreOfficialUrls() {
-            if (confirm('确定要将所有端点配置为官方地址吗？\n\n官方端点：\n• Code Assist: https://cloudcode-pa.googleapis.com\n• OAuth: https://oauth2.googleapis.com\n• Google APIs: https://www.googleapis.com\n• Resource Manager: https://cloudresourcemanager.googleapis.com\n• Service Usage: https://serviceusage.googleapis.com')) {
-
-                // 设置所有端点为官方地址
-                for (const [fieldId, url] of Object.entries(officialUrls)) {
-                    const field = document.getElementById(fieldId);
-                    if (field && !field.disabled) {
-                        field.value = url;
-                    }
-                }
-
-                showStatus('✅ 已切换到官方端点配置，记得点击"保存配置"按钮保存设置', 'success');
-            }
-        }
+        
     </script>
+<script>
+        async function initPlayground(){
+            try{
+                await loadModels();
+                clearMessages();
+                addMessageRow('system','You are a helpful assistant.');
+                addMessageRow('user','hello');
+                addMessageRow('assistant','Hi — hello! How can I help you today?');
+                showStatus('操练场已就绪','success');
+            }catch(e){
+                showStatus('加载模型失败: '+e.message,'error');
+            }
+        }
+
+        async function loadModels(){
+            const sel = document.getElementById('playgroundModel');
+            sel.innerHTML = '';
+            const res = await fetch('/v1/models', { headers: getAuthHeaders() });
+            const data = await res.json();
+            const list = (data && data.data) ? data.data : [];
+            list.forEach(item => {
+                const id = item.id || item;
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = id;
+                sel.appendChild(opt);
+            });
+            if (!sel.value && list.length>0){ sel.value = (list[0].id || list[0]); }
+        }
+
+        function addMessageRow(role='user', content=''){
+            const wrap = document.getElementById('playgroundMessages');
+            const row = document.createElement('div');
+            row.className = 'form-group';
+            row.style = 'display:flex; gap:8px; align-items:flex-start; margin-bottom:8px';
+            const roleSel = document.createElement('select');
+            roleSel.className = 'config-input';
+            roleSel.style = 'width:140px; min-width:140px; height:32px; padding:2px 8px';
+            ['system','user','assistant','tool'].forEach(r=>{ const o=document.createElement('option'); o.value=r; o.textContent=r; roleSel.appendChild(o); });
+            roleSel.value = role;
+            const ta = document.createElement('textarea');
+            ta.className = 'config-input';
+            ta.style = 'min-height:80px; flex:1; resize:vertical';
+            ta.value = content || '';
+            const del = document.createElement('button');
+            del.className = 'btn';
+            del.style = 'background:#dc3545; padding:4px 8px; font-size:12px; min-width:auto; height:32px; width:auto; flex:0 0 auto';
+            del.textContent = '删除';
+            del.onclick = ()=>{ row.remove(); };
+            row.appendChild(roleSel); row.appendChild(ta); row.appendChild(del);
+            wrap.appendChild(row);
+        }
+
+        function clearMessages(){
+            const wrap = document.getElementById('playgroundMessages');
+            wrap.innerHTML = '';
+            const out = document.getElementById('playgroundOutputContent');
+            const rid = document.getElementById('playgroundRequestId');
+            const tok = document.getElementById('playgroundTokensUsed');
+            const raw = document.getElementById('playgroundRawJson');
+            if (out) out.textContent = '';
+            if (rid) rid.textContent = '';
+            if (tok) tok.textContent = '';
+            if (raw) raw.textContent = '';
+        }
+
+        async function sendPlayground(){
+            const sel = document.getElementById('playgroundModel');
+            const temp = parseFloat(document.getElementById('playgroundTemperature').value) || 0.5;
+            const maxT = parseInt(document.getElementById('playgroundMaxTokens').value) || 4096;
+            const rows = Array.from(document.querySelectorAll('#playgroundMessages .form-group'));
+            const messages = rows.map(r=>{
+                const role = r.querySelector('select').value;
+                const content = r.querySelector('textarea').value;
+                return { role, content };
+            }).filter(m=> (m.content||'').trim().length>0);
+            const body = { model: sel.value, messages, temperature: temp, max_tokens: maxT };
+            const toolsStr = document.getElementById('playgroundToolsJson').value.trim();
+            if (toolsStr) {
+                try {
+                    const tools = JSON.parse(toolsStr);
+                    body.tools = tools;
+                    body.tool_choice = 'auto';
+                } catch (e) {
+                    showStatus('工具JSON解析失败: '+e.message,'error');
+                    return;
+                }
+            }
+            const enableStream = !!document.getElementById('playgroundStream')?.checked;
+            if (enableStream) body.stream = true;
+            try{
+                showStatus('发送中...','info');
+                const res = await fetch('/v1/chat/completions', { method:'POST', headers: getAuthHeaders(), body: JSON.stringify(body) });
+                if (!enableStream) {
+                    const data = await res.json();
+                    if (!res.ok){ throw new Error(data.detail||'请求失败'); }
+                    const msg = (((data.choices||[])[0]||{}).message||{}).content || '';
+                    const rid = data.id || (data.request_id||'');
+                    const usage = data.usage || {};
+                    const total = usage.total_tokens || usage.totalTokenCount || 0;
+                    document.getElementById('playgroundOutputContent').textContent = msg;
+                    document.getElementById('playgroundRequestId').textContent = rid;
+                    document.getElementById('playgroundTokensUsed').textContent = total;
+                    document.getElementById('playgroundRawJson').textContent = JSON.stringify(data, null, 2);
+                    showStatus('已完成','success');
+                } else {
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+                    let buf = '';
+                    const outEl = document.getElementById('playgroundOutputContent');
+                    const tokEl = document.getElementById('playgroundTokensUsed');
+                    const rawEl = document.getElementById('playgroundRawJson');
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        buf += decoder.decode(value, { stream: true });
+                        const parts = buf.split('\n\n');
+                        buf = parts.pop();
+                        for (const part of parts) {
+                            const line = part.trim();
+                            if (!line.startsWith('data:')) continue;
+                            const payload = line.slice(5).trim();
+                            if (payload === '[DONE]') continue;
+                            try {
+                                const obj = JSON.parse(payload);
+                                const ch = (obj.choices||[])[0]||{};
+                                const delta = ch.delta||{};
+                                const content = delta.content||'';
+                                if (content && outEl) outEl.textContent += content;
+                                const usage = obj.usage||{};
+                                const total = usage.total_tokens||usage.totalTokenCount||0;
+                                if (total && tokEl) tokEl.textContent = total;
+                                if (rawEl) rawEl.textContent = payload;
+                            } catch(e) {}
+                        }
+                    }
+                    showStatus('已完成','success');
+                }
+            }catch(e){
+                showStatus(e.message,'error');
+            }
+        }
+</script>
 </body>
 
 </html>

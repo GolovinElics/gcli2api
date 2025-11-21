@@ -136,15 +136,7 @@ if [ -f "./web.py" ]; then
 elif [ -f "./gcli2api/web.py" ]; then
     echo "进入已存在的 gcli2api 目录"
     cd ./gcli2api
-else
-    echo "克隆项目仓库..."
-    git clone https://github.com/su-kaka/gcli2api.git
-    cd ./gcli2api
 fi
-
-echo "强制同步项目代码，忽略本地修改..."
-git fetch --all
-git reset --hard origin/$(git rev-parse --abbrev-ref HEAD)
 
 echo "初始化 uv 环境..."
 uv init

@@ -69,24 +69,32 @@ def should_include_thoughts(model_name):
 
 # Dynamic Configuration System - Optimized for memory efficiency
 async def get_config_value(key: str, default: Any = None, env_var: Optional[str] = None) -> Any:
-    """Get configuration value with priority: ENV > Storage > default."""
-    # Priority 1: Environment variable
-    if env_var and os.getenv(env_var):
+    override_env = False
+    env_override = os.getenv("CONFIG_OVERRIDE_ENV")
+    if env_override:
+        if env_override.lower() in ("true", "1", "yes", "on"):
+            override_env = True
+    if not override_env:
+        try:
+            from src.storage_adapter import get_storage_adapter
+            storage_adapter = await get_storage_adapter()
+            ov = await storage_adapter.get_config("override_env")
+            if isinstance(ov, str):
+                override_env = ov.lower() in ("true", "1", "yes", "on")
+            else:
+                override_env = bool(ov)
+        except Exception:
+            override_env = False
+    if (not override_env) and env_var and os.getenv(env_var):
         return os.getenv(env_var)
-    
-    # Priority 2: Storage system
     try:
         from src.storage_adapter import get_storage_adapter
         storage_adapter = await get_storage_adapter()
         value = await storage_adapter.get_config(key)
-        # 检查值是否存在（不是None），允许空字符串、0、False等有效值
         if value is not None:
             return value
-    except Exception as e:
-        # Debug: print import/storage errors
-        # print(f"Config storage error for key {key}: {e}")
+    except Exception:
         pass
-    
     return default
 
 
@@ -185,40 +193,43 @@ PUBLIC_API_MODELS = [
 
 def get_available_models(router_type="openai"):
     """
-    Get available models with feature prefixes.
-    
-    Args:
-        router_type: "openai" or "gemini"
-        
-    Returns:
-        List of model names with feature prefixes
+    返回可用模型列表。
+    当使用 AssemblyAI 时，仅返回 AssemblyAI 模型列表；否则返回旧的 Gemini 列表。
     """
+    env_value = os.getenv("USE_ASSEMBLY")
+    if env_value is None:
+        use_assembly = True
+    else:
+        use_assembly = env_value.lower() in ("true", "1", "yes", "on")
+
+    if use_assembly:
+        return [
+            # OpenAI GPT family
+            "gpt-5",
+            "gpt-5-nano",
+            "gpt-5-mini",
+            "gpt-4.1",
+            # Anthropic Claude family
+            "claude-4.5-sonnet-20250929",
+            "claude-4-sonnet-20250514",
+            "claude-3.5-haiku-20241022",
+            # Google Gemini family
+            "gemini-2.5-pro",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite"
+        ]
+
     models = []
-    
     for base_model in BASE_MODELS:
-        # 基础模型
         models.append(base_model)
-        
-        if(base_model in PUBLIC_API_MODELS):
+        if (base_model in PUBLIC_API_MODELS):
             return models
-        
-        # 假流式模型 (前缀格式)
         models.append(f"假流式/{base_model}")
-        
-        # 流式抗截断模型 (仅在流式传输时有效，前缀格式)
         models.append(f"流式抗截断/{base_model}")
-        
-        # 支持thinking模式后缀与功能前缀组合
         for thinking_suffix in ["-maxthinking", "-nothinking", "-search"]:
-            # 基础模型 + thinking后缀
             models.append(f"{base_model}{thinking_suffix}")
-            
-            # 假流式 + thinking后缀
             models.append(f"假流式/{base_model}{thinking_suffix}")
-            
-            # 流式抗截断 + thinking后缀
             models.append(f"流式抗截断/{base_model}{thinking_suffix}")
-    
     return models
 
 def is_fake_streaming_model(model_name: str) -> bool:
@@ -245,14 +256,7 @@ async def get_anti_truncation_max_attempts() -> int:
     TOML config key: anti_truncation_max_attempts
     Default: 3
     """
-    env_value = os.getenv("ANTI_TRUNCATION_MAX_ATTEMPTS")
-    if env_value:
-        try:
-            return int(env_value)
-        except ValueError:
-            pass
-    
-    return int(await get_config_value("anti_truncation_max_attempts", 3))
+    return 3
 
 # Server Configuration
 async def get_server_host() -> str:
@@ -334,15 +338,6 @@ async def get_credentials_dir() -> str:
     """
     return str(await get_config_value("credentials_dir", "./creds", "CREDENTIALS_DIR"))
 
-async def get_code_assist_endpoint() -> str:
-    """
-    Get Code Assist endpoint setting.
-    
-    Environment variable: CODE_ASSIST_ENDPOINT
-    TOML config key: code_assist_endpoint
-    Default: https://cloudcode-pa.googleapis.com
-    """
-    return str(await get_config_value("code_assist_endpoint", "https://cloudcode-pa.googleapis.com", "CODE_ASSIST_ENDPOINT"))
 
 async def get_auto_load_env_creds() -> bool:
     """
@@ -369,60 +364,12 @@ async def get_compatibility_mode_enabled() -> bool:
     TOML config key: compatibility_mode_enabled
     Default: True
     """
-    env_value = os.getenv("COMPATIBILITY_MODE")
-    if env_value:
-        return env_value.lower() in ("true", "1", "yes", "on")
-    
-    return bool(await get_config_value("compatibility_mode_enabled", True))
-
-async def get_oauth_proxy_url() -> str:
-    """
-    Get OAuth proxy URL setting.
-    
-    用于Google OAuth2认证的代理URL。
-    
-    Environment variable: OAUTH_PROXY_URL
-    TOML config key: oauth_proxy_url
-    Default: https://oauth2.googleapis.com
-    """
-    return str(await get_config_value("oauth_proxy_url", "https://oauth2.googleapis.com", "OAUTH_PROXY_URL"))
-
-async def get_googleapis_proxy_url() -> str:
-    """
-    Get Google APIs proxy URL setting.
-    
-    用于Google APIs调用的代理URL。
-    
-    Environment variable: GOOGLEAPIS_PROXY_URL
-    TOML config key: googleapis_proxy_url
-    Default: https://www.googleapis.com
-    """
-    return str(await get_config_value("googleapis_proxy_url", "https://www.googleapis.com", "GOOGLEAPIS_PROXY_URL"))
+    return False
 
 
-async def get_resource_manager_api_url() -> str:
-    """
-    Get Google Cloud Resource Manager API URL setting.
-    
-    用于Google Cloud Resource Manager API的URL。
-    
-    Environment variable: RESOURCE_MANAGER_API_URL
-    TOML config key: resource_manager_api_url
-    Default: https://cloudresourcemanager.googleapis.com
-    """
-    return str(await get_config_value("resource_manager_api_url", "https://cloudresourcemanager.googleapis.com", "RESOURCE_MANAGER_API_URL"))
 
-async def get_service_usage_api_url() -> str:
-    """
-    Get Google Cloud Service Usage API URL setting.
-    
-    用于Google Cloud Service Usage API的URL。
-    
-    Environment variable: SERVICE_USAGE_API_URL
-    TOML config key: service_usage_api_url
-    Default: https://serviceusage.googleapis.com
-    """
-    return str(await get_config_value("service_usage_api_url", "https://serviceusage.googleapis.com", "SERVICE_USAGE_API_URL"))
+
+
 
 
 # MongoDB Configuration
@@ -467,3 +414,47 @@ async def is_mongodb_mode() -> bool:
     """
     mongodb_uri = await get_mongodb_uri()
     return bool(mongodb_uri and mongodb_uri.strip())
+
+# AssemblyAI Configuration
+async def get_assembly_endpoint() -> str:
+    """
+    Get AssemblyAI LLM Gateway endpoint setting.
+    
+    Environment variable: ASSEMBLY_ENDPOINT
+    TOML config key: assembly_endpoint
+    Default: https://llm-gateway.assemblyai.com/v1/chat/completions
+    """
+    return str(await get_config_value("assembly_endpoint", "https://llm-gateway.assemblyai.com/v1/chat/completions", "ASSEMBLY_ENDPOINT"))
+
+async def get_assembly_api_key() -> str:
+    """
+    Get AssemblyAI API key for upstream authentication.
+    
+    Environment variable: ASSEMBLY_API_KEY
+    TOML config key: assembly_api_key
+    Default: empty string
+    """
+    return str(await get_config_value("assembly_api_key", "", "ASSEMBLY_API_KEY"))
+
+async def get_assembly_api_keys() -> list:
+    value = await get_config_value("assembly_api_keys", None, "ASSEMBLY_API_KEYS")
+    if isinstance(value, list):
+        return [str(v) for v in value if str(v).strip()]
+    if isinstance(value, str) and value.strip():
+        parts = [p.strip() for p in value.split(",") if p.strip()]
+        return parts
+    single = await get_config_value("assembly_api_key", "", "ASSEMBLY_API_KEY")
+    return [single] if single else []
+
+async def get_use_assembly() -> bool:
+    """
+    Toggle to use AssemblyAI as the upstream provider.
+    
+    Environment variable: USE_ASSEMBLY
+    TOML config key: use_assembly
+    Default: True
+    """
+    env_value = os.getenv("USE_ASSEMBLY")
+    if env_value:
+        return env_value.lower() in ("true", "1", "yes", "on")
+    return bool(await get_config_value("use_assembly", True))

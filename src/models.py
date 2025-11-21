@@ -7,7 +7,7 @@ class Model(BaseModel):
     id: str
     object: str = "model"
     created: Optional[int] = None
-    owned_by: Optional[str] = "google"
+    owned_by: Optional[str] = "assemblyai"
 
 class ModelList(BaseModel):
     object: str = "list"

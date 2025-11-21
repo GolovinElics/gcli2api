@@ -26,19 +26,10 @@ curl -Ls https://astral.sh/uv/install.sh | sh
 # 确保 uv 在 PATH 中
 export PATH="$HOME/.local/bin:$PATH"
 
-# 克隆或进入项目目录
-if [ -f "./web.py" ]; then
-    # 已经在目标目录
-    :
-elif [ -f "./gcli2api/web.py" ]; then
-    cd ./gcli2api
-else
-    git clone https://github.com/su-kaka/gcli2api.git
+# 进入项目目录（若在子目录中）
+if [ -f "./gcli2api/web.py" ]; then
     cd ./gcli2api
 fi
-
-# 拉取最新代码
-git pull
 
 # 创建并同步虚拟环境
 uv sync

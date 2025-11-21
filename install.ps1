@@ -17,14 +17,7 @@ if (Get-Command scoop -ErrorAction SilentlyContinue) {
 }
 
 scoop install git uv
-if (Test-Path -LiteralPath "./web.py") {
-    # Already in target directory; skip clone and cd
-}
-elseif (Test-Path -LiteralPath "./gcli2api/web.py") {
-    Set-Location ./gcli2api
-}
-else {
-    git clone https://github.com/su-kaka/gcli2api.git
+if (Test-Path -LiteralPath "./gcli2api/web.py") {
     Set-Location ./gcli2api
 }
 uv sync

@@ -275,6 +275,55 @@ def gemini_response_to_openai(
     return response_data
 
 
+def assembly_response_to_openai(
+    assembly_response: Dict[str, Any], model: str
+) -> Dict[str, Any]:
+    """
+    将 AssemblyAI LLM Gateway 响应转换为 OpenAI 聊天完成格式
+    """
+    # choices
+    choices = []
+    for idx, choice in enumerate(assembly_response.get("choices", [])):
+        msg = choice.get("message", {})
+        role = msg.get("role", "assistant")
+        content = msg.get("content", "")
+        message = {"role": role, "content": content}
+        # 透传工具调用（若存在）
+        tool_calls = msg.get("tool_calls") or []
+        if tool_calls:
+            message["tool_calls"] = tool_calls
+        # 兼容旧式函数调用字段
+        function_call = msg.get("function_call")
+        if function_call:
+            message["function_call"] = function_call
+        choices.append({
+            "index": idx,
+            "message": message,
+            "finish_reason": "stop"
+        })
+
+    # usage
+    usage_raw = assembly_response.get("usage", {})
+    usage = {
+        "prompt_tokens": usage_raw.get("input_tokens", 0),
+        "completion_tokens": usage_raw.get("output_tokens", 0),
+        "total_tokens": usage_raw.get("total_tokens", 0),
+    } if usage_raw else None
+
+    response_data = {
+        "id": str(assembly_response.get("request_id", uuid.uuid4())),
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": model,
+        "choices": choices,
+    }
+
+    if usage:
+        response_data["usage"] = usage
+
+    return response_data
+
+
 def gemini_stream_chunk_to_openai(
     gemini_chunk: Dict[str, Any], model: str, response_id: str
 ) -> Dict[str, Any]:
