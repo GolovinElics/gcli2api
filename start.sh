@@ -10,9 +10,9 @@ source .venv/bin/activate
 if command -v uv >/dev/null 2>&1; then
   uv sync
 else
-  if [ -f "requirements.txt" ]; then
-    pip install -r requirements.txt
-  fi
+  python -m pip install --upgrade pip wheel setuptools
+  INDEX_URL=${PIP_INDEX_URL:-https://pypi.org/simple}
+  python -m pip install --no-cache-dir -i "$INDEX_URL" .
 fi
 
 export USE_ASSEMBLY=${USE_ASSEMBLY:-true}
