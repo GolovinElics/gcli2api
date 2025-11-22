@@ -181,7 +181,9 @@ class UsageStats:
                         "total_calls": stats.get("total_calls", 0),
                         "next_reset_time": stats.get("next_reset_time"),
                         "daily_limit_gemini_2_5_pro": stats.get("daily_limit_gemini_2_5_pro", 100),
-                        "daily_limit_total": stats.get("daily_limit_total", 1000)
+                        "daily_limit_total": stats.get("daily_limit_total", 1000),
+                        "model_counts": stats.get("model_counts", {}),
+                        "display_name": stats.get("display_name")
                     }
                     
                     success = await self._storage_adapter.update_usage_stats(filename, stats_data)
@@ -217,7 +219,9 @@ class UsageStats:
                 "total_calls": 0,
                 "next_reset_time": next_reset.isoformat(),
                 "daily_limit_gemini_2_5_pro": 100,
-                "daily_limit_total": 1000
+                "daily_limit_total": 1000,
+                "model_counts": {},
+                "display_name": None
             }
             self._cache_dirty = True  # 标记缓存已修改
         
@@ -260,7 +264,7 @@ class UsageStats:
             log.error(f"Error in daily quota reset check: {e}")
             return False
     
-    async def record_successful_call(self, filename: str, model_name: str):
+    async def record_successful_call(self, filename: str, model_name: str, display_name: Optional[str] = None):
         """Record a successful API call for statistics."""
         if not self._initialized:
             await self.initialize()
@@ -279,7 +283,14 @@ class UsageStats:
                 stats["total_calls"] += 1
                 if is_gemini_2_5_pro:
                     stats["gemini_2_5_pro_calls"] += 1
-                
+
+                mc = stats.get("model_counts") or {}
+                mc[model_name] = int(mc.get(model_name, 0)) + 1
+                stats["model_counts"] = mc
+
+                if display_name:
+                    stats["display_name"] = display_name
+
                 self._cache_dirty = True  # 标记缓存已修改
                 
                 log.debug(f"Usage recorded - File: {normalized_filename}, Model: {model_name}, "
@@ -315,7 +326,9 @@ class UsageStats:
                     "total_calls": stats.get("total_calls", 0),
                     "daily_limit_gemini_2_5_pro": stats.get("daily_limit_gemini_2_5_pro", 100),
                     "daily_limit_total": stats.get("daily_limit_total", 1000),
-                    "next_reset_time": stats.get("next_reset_time")
+                    "next_reset_time": stats.get("next_reset_time"),
+                    "model_counts": stats.get("model_counts", {}),
+                    "display_name": stats.get("display_name")
                 }
             else:
                 # Return all statistics
@@ -328,7 +341,9 @@ class UsageStats:
                         "total_calls": stats.get("total_calls", 0),
                         "daily_limit_gemini_2_5_pro": stats.get("daily_limit_gemini_2_5_pro", 100),
                         "daily_limit_total": stats.get("daily_limit_total", 1000),
-                        "next_reset_time": stats.get("next_reset_time")
+                        "next_reset_time": stats.get("next_reset_time"),
+                        "model_counts": stats.get("model_counts", {}),
+                        "display_name": stats.get("display_name")
                     }
                 
                 return all_stats
@@ -426,10 +441,10 @@ async def get_usage_stats_instance() -> UsageStats:
     return _usage_stats_instance
 
 
-async def record_successful_call(filename: str, model_name: str):
+async def record_successful_call(filename: str, model_name: str, display_name: Optional[str] = None):
     """Convenience function to record a successful API call."""
     stats = await get_usage_stats_instance()
-    await stats.record_successful_call(filename, model_name)
+    await stats.record_successful_call(filename, model_name, display_name)
 
 
 async def get_usage_stats(filename: str = None) -> Dict[str, Any]:

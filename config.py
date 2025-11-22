@@ -194,7 +194,7 @@ PUBLIC_API_MODELS = [
 def get_available_models(router_type="openai"):
     """
     返回可用模型列表。
-    当使用 AssemblyAI 时，仅返回 AssemblyAI 模型列表；否则返回旧的 Gemini 列表。
+    优先级：已选模型(available_models_selected) > 缓存模型(available_models) > 默认列表。
     """
     env_value = os.getenv("USE_ASSEMBLY")
     if env_value is None:
@@ -203,21 +203,73 @@ def get_available_models(router_type="openai"):
         use_assembly = env_value.lower() in ("true", "1", "yes", "on")
 
     if use_assembly:
+        try:
+            # 已选模型优先
+            from src.storage_adapter import get_storage_adapter
+            storage_adapter = None
+            try:
+                import asyncio
+                loop = asyncio.get_event_loop()
+                storage_adapter = loop.run_until_complete(get_storage_adapter()) if not loop.is_running() else None
+            except Exception:
+                storage_adapter = None
+            if storage_adapter:
+                try:
+                    selected = loop.run_until_complete(storage_adapter.get_config("available_models_selected")) if not loop.is_running() else None
+                except Exception:
+                    selected = None
+                if isinstance(selected, list) and selected:
+                    return [str(m) for m in selected]
+                try:
+                    cached = loop.run_until_complete(storage_adapter.get_config("available_models")) if not loop.is_running() else None
+                except Exception:
+                    cached = None
+                if isinstance(cached, list) and cached:
+                    return [str(m) for m in cached]
+        except Exception:
+            pass
         return [
-            # OpenAI GPT family
             "gpt-5",
             "gpt-5-nano",
             "gpt-5-mini",
             "gpt-4.1",
-            # Anthropic Claude family
             "claude-4.5-sonnet-20250929",
             "claude-4-sonnet-20250514",
             "claude-3.5-haiku-20241022",
-            # Google Gemini family
             "gemini-2.5-pro",
             "gemini-2.5-flash",
             "gemini-2.5-flash-lite"
         ]
+
+async def get_available_models_async(router_type: str = "openai"):
+    """异步版本：优先返回已选模型或缓存模型"""
+    env_value = os.getenv("USE_ASSEMBLY")
+    if env_value is None:
+        use_assembly = True
+    else:
+        use_assembly = env_value.lower() in ("true", "1", "yes", "on")
+
+    if use_assembly:
+        selected = await get_config_value("available_models_selected")
+        if isinstance(selected, list) and selected:
+            return [str(m) for m in selected]
+        cached = await get_config_value("available_models")
+        if isinstance(cached, list) and cached:
+            return [str(m) for m in cached]
+        return [
+            "gpt-5",
+            "gpt-5-nano",
+            "gpt-5-mini",
+            "gpt-4.1",
+            "claude-4.5-sonnet-20250929",
+            "claude-4-sonnet-20250514",
+            "claude-3.5-haiku-20241022",
+            "gemini-2.5-pro",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite"
+        ]
+    # 非 Assembly 模式维持旧逻辑
+    return get_available_models(router_type)
 
     models = []
     for base_model in BASE_MODELS:

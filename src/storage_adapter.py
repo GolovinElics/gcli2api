@@ -106,44 +106,53 @@ class StorageAdapter:
             if redis_uri:
                 try:
                     from .storage.redis_manager import RedisManager
-                    self._backend = RedisManager()
-                    await self._backend.initialize()
+                    backend = RedisManager()
+                    await backend.initialize()
+                    self._backend = backend
                     log.info("Using Redis storage backend")
                 except ImportError as e:
                     log.error(f"Failed to import Redis backend: {e}")
                     log.info("Falling back to next available storage backend")
+                    self._backend = None
                 except Exception as e:
                     log.error(f"Failed to initialize Redis backend: {e}")
                     log.info("Falling back to next available storage backend")
+                    self._backend = None
             
             # 如果Redis不可用或未配置，接下来尝试Postgres（优先级低于Redis）
             postgres_dsn = os.getenv("POSTGRES_DSN", "")
             if not self._backend and postgres_dsn:
                 try:
                     from .storage.postgres_manager import PostgresManager
-                    self._backend = PostgresManager()
-                    await self._backend.initialize()
+                    backend = PostgresManager()
+                    await backend.initialize()
+                    self._backend = backend
                     log.info("Using Postgres storage backend")
                 except ImportError as e:
                     log.error(f"Failed to import Postgres backend: {e}")
                     log.info("Falling back to next available storage backend")
+                    self._backend = None
                 except Exception as e:
                     log.error(f"Failed to initialize Postgres backend: {e}")
                     log.info("Falling back to next available storage backend")
+                    self._backend = None
 
             # 如果Redis和Postgres不可用，尝试MongoDB存储
             if not self._backend and mongodb_uri:
                 try:
                     from .storage.mongodb_manager import MongoDBManager
-                    self._backend = MongoDBManager()
-                    await self._backend.initialize()
+                    backend = MongoDBManager()
+                    await backend.initialize()
+                    self._backend = backend
                     log.info("Using MongoDB storage backend")
                 except ImportError as e:
                     log.error(f"Failed to import MongoDB backend: {e}")
                     log.info("Falling back to file storage backend")
+                    self._backend = None
                 except Exception as e:
                     log.error(f"Failed to initialize MongoDB backend: {e}")
                     log.info("Falling back to file storage backend")
+                    self._backend = None
             
             # 如果Redis和MongoDB都不可用，使用文件存储
             if not self._backend:

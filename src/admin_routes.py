@@ -20,6 +20,7 @@ from config import (
 )
 from .storage_adapter import get_storage_adapter
 from .usage_stats import get_usage_stats, get_aggregated_stats, get_usage_stats_instance
+from .assembly_client import fetch_assembly_models
 
 
 router = APIRouter()
@@ -65,6 +66,16 @@ async def get_config(token: str = Depends(authenticate)):
     cfg["panel_password"] = await get_panel_password()
     cfg["port"] = await get_server_port()
     cfg["host"] = await get_server_host()
+    # 其他配置从适配器读取
+    try:
+        cfg["calls_per_rotation"] = await adapter.get_config("calls_per_rotation", 100)
+        cfg["retry_429_enabled"] = await adapter.get_config("retry_429_enabled", True)
+        cfg["retry_429_max_retries"] = await adapter.get_config("retry_429_max_retries", 5)
+        cfg["retry_429_interval"] = await adapter.get_config("retry_429_interval", 1.0)
+        cfg["auto_ban_enabled"] = await adapter.get_config("auto_ban_enabled", False)
+        cfg["auto_ban_error_codes"] = await adapter.get_config("auto_ban_error_codes", [401,403])
+    except Exception:
+        pass
     try:
         adapter_val = await (await get_storage_adapter()).get_config("override_env")
         if isinstance(adapter_val, str):
@@ -73,7 +84,10 @@ async def get_config(token: str = Depends(authenticate)):
             cfg["override_env"] = bool(adapter_val)
     except Exception:
         cfg["override_env"] = False
-    env_locked = [k for k in ["ASSEMBLY_API_KEYS","ASSEMBLY_API_KEY","USE_ASSEMBLY","API_PASSWORD","PANEL_PASSWORD","PORT","HOST"] if os.getenv(k)]
+    env_locked = [k for k in [
+        "ASSEMBLY_API_KEYS","ASSEMBLY_API_KEY","USE_ASSEMBLY","API_PASSWORD","PANEL_PASSWORD","PORT","HOST",
+        "CALLS_PER_ROTATION","RETRY_429_ENABLED","RETRY_429_MAX_RETRIES","RETRY_429_INTERVAL","AUTO_BAN","AUTO_BAN_ERROR_CODES"
+    ] if os.getenv(k)]
     return JSONResponse(content={"config": cfg, "env_locked": env_locked})
 
 @router.get("/config/all")
@@ -132,6 +146,38 @@ async def save_config(payload: Dict[str, Any], token: str = Depends(authenticate
         updates["port"] = int(payload.get("port"))
     if payload.get("host") is not None:
         updates["host"] = str(payload.get("host"))
+    # 性能与重试配置
+    if payload.get("calls_per_rotation") is not None:
+        try:
+            updates["calls_per_rotation"] = int(payload.get("calls_per_rotation"))
+        except Exception:
+            updates["calls_per_rotation"] = 100
+    if payload.get("retry_429_enabled") is not None:
+        updates["retry_429_enabled"] = bool(payload.get("retry_429_enabled"))
+    if payload.get("retry_429_max_retries") is not None:
+        try:
+            updates["retry_429_max_retries"] = int(payload.get("retry_429_max_retries"))
+        except Exception:
+            updates["retry_429_max_retries"] = 5
+    if payload.get("retry_429_interval") is not None:
+        try:
+            updates["retry_429_interval"] = float(payload.get("retry_429_interval"))
+        except Exception:
+            updates["retry_429_interval"] = 1.0
+    # 自动封禁配置
+    if payload.get("auto_ban_enabled") is not None:
+        updates["auto_ban_enabled"] = bool(payload.get("auto_ban_enabled"))
+    if payload.get("auto_ban_error_codes") is not None:
+        val = payload.get("auto_ban_error_codes")
+        codes = []
+        try:
+            if isinstance(val, str):
+                codes = [int(x.strip()) for x in val.split(',') if x.strip()]
+            elif isinstance(val, list):
+                codes = [int(x) for x in val]
+        except Exception:
+            codes = [401,403]
+        updates["auto_ban_error_codes"] = codes
     # 写入
     for k, v in updates.items():
         ok = await adapter.set_config(k, v)
@@ -143,7 +189,7 @@ async def save_config(payload: Dict[str, Any], token: str = Depends(authenticate
 
 @router.get("/usage/stats")
 async def usage_stats(token: str = Depends(authenticate)):
-    stats = await get_usage_stats("assemblyai")
+    stats = await get_usage_stats()
     return JSONResponse(content=stats)
 
 
@@ -216,6 +262,46 @@ async def usage_aggregated(model: str = None, key: str = None, only: str = None,
     return JSONResponse(content=agg)
 
 
+@router.get("/models/query")
+async def models_query(token: str = Depends(authenticate)):
+    """查询上游模型列表并按供应商分类返回（含元数据）"""
+    data = await fetch_assembly_models()
+    models = [str(m) for m in data.get("models", [])]
+    meta = data.get("meta", {})
+    # 缓存到配置，便于后续列表和操练场使用
+    try:
+        adapter = await get_storage_adapter()
+        await adapter.set_config("available_models", models)
+        await adapter.set_config("available_models_meta", meta)
+    except Exception:
+        pass
+    grouped: Dict[str, Any] = {"Anthropic": [], "OpenAI": [], "Google": [], "Other": []}
+    for m in models:
+        ms = str(m)
+        if ms.startswith("claude"):
+            grouped["Anthropic"].append(ms)
+        elif ms.startswith("gpt") or ms.startswith("chatgpt"):
+            grouped["OpenAI"].append(ms)
+        elif ms.startswith("gemini"):
+            grouped["Google"].append(ms)
+        else:
+            grouped["Other"].append(ms)
+    return JSONResponse(content={"models": models, "grouped": grouped, "meta": meta})
+
+
+@router.post("/models/save")
+async def models_save(payload: Dict[str, Any], token: str = Depends(authenticate)):
+    """保存所选模型到配置"""
+    selected = payload.get("selected_models") or []
+    if not isinstance(selected, list):
+        raise HTTPException(status_code=400, detail="selected_models 必须是数组")
+    adapter = await get_storage_adapter()
+    ok = await adapter.set_config("available_models_selected", [str(m) for m in selected])
+    if not ok:
+        raise HTTPException(status_code=500, detail="保存失败: available_models_selected")
+    return JSONResponse(content={"saved_count": len(selected)})
+
+
 @router.post("/usage/update-limits")
 async def usage_update_limits(payload: Dict[str, Any], token: str = Depends(authenticate)):
     filename = payload.get("filename")
@@ -232,6 +318,12 @@ async def usage_reset(payload: Dict[str, Any], token: str = Depends(authenticate
     stats = await get_usage_stats_instance()
     await stats.reset_stats(filename)
     return JSONResponse(content={"message": "使用统计已重置"})
+
+@router.get("/storage/info")
+async def storage_info(token: str = Depends(authenticate)):
+    adapter = await get_storage_adapter()
+    info = await adapter.get_backend_info()
+    return JSONResponse(content=info)
 
 
 @router.get("/usage/summary")

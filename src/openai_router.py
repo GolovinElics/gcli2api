@@ -12,13 +12,13 @@ from fastapi import APIRouter, HTTPException, Depends, Request, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from config import get_available_models, is_fake_streaming_model, is_anti_truncation_model, get_base_model_from_feature_model, get_anti_truncation_max_attempts
+from config import get_available_models_async, is_fake_streaming_model, is_anti_truncation_model, get_base_model_from_feature_model, get_anti_truncation_max_attempts
 from log import log
 from .anti_truncation import apply_anti_truncation_to_stream
 from .assembly_client import send_assembly_request
 from .models import ChatCompletionRequest, ModelList, Model
 from .task_manager import create_managed_task
-from .openai_transfer import assembly_response_to_openai, gemini_stream_chunk_to_openai, _convert_usage_metadata
+from .openai_transfer import assembly_response_to_openai, gemini_stream_chunk_to_openai, gemini_response_to_openai, _convert_usage_metadata
 
 # 创建路由器
 router = APIRouter()
@@ -38,7 +38,7 @@ async def authenticate(credentials: HTTPAuthorizationCredentials = Depends(secur
 @router.get("/v1/models", response_model=ModelList)
 async def list_models():
     """返回OpenAI格式的模型列表"""
-    models = get_available_models("openai")
+    models = await get_available_models_async("openai")
     return ModelList(data=[Model(id=m) for m in models])
 
 @router.post("/v1/chat/completions")
@@ -133,22 +133,86 @@ async def chat_completions(
     
     # 转换非流式响应（AssemblyAI → OpenAI）
     try:
-        if hasattr(response, 'body'):
-            response_data = json.loads(response.body.decode() if isinstance(response.body, bytes) else response.body)
-        else:
-            response_data = json.loads(response.content.decode() if isinstance(response.content, bytes) else response.content)
-
-        openai_response = assembly_response_to_openai(response_data, model)
         try:
-            from .usage_stats import record_successful_call
-            await record_successful_call("assemblyai", model)
+            if hasattr(response, 'text') and isinstance(getattr(response, 'text'), str):
+                text = response.text
+            elif hasattr(response, 'body'):
+                body = response.body
+                text = body.decode('utf-8', errors='replace') if isinstance(body, bytes) else str(body)
+            elif hasattr(response, 'content'):
+                content = response.content
+                text = content.decode('utf-8', errors='replace') if isinstance(content, bytes) else str(content)
+            else:
+                text = str(response)
+        except Exception as de:
+            log.warning(f"Response decode failed: {de}")
+            text = str(response)
+        parsed = None
+        try:
+            parsed = json.loads(text.strip())
+        except Exception:
+            if 'data:' in text:
+                lines = [l.strip() for l in text.splitlines() if l.strip()]
+                for l in reversed(lines):
+                    if not l.startswith('data:'):
+                        continue
+                    payload = l[5:].strip()
+                    if payload == '[DONE]':
+                        continue
+                    try:
+                        parsed = json.loads(payload)
+                        break
+                    except Exception:
+                        pass
+            if parsed is None and hasattr(response, 'json'):
+                try:
+                    parsed = response.json()
+                except Exception:
+                    parsed = None
+
+        if isinstance(parsed, dict):
+            if 'candidates' in parsed:
+                openai_response = gemini_response_to_openai(parsed, model)
+            else:
+                openai_response = assembly_response_to_openai(parsed, model)
+        else:
+            openai_response = {
+                "id": str(uuid.uuid4()),
+                "object": "chat.completion",
+                "created": int(time.time()),
+                "model": model,
+                "choices": [{
+                    "index": 0,
+                    "message": {"role": "assistant", "content": text.strip()},
+                    "finish_reason": "stop"
+                }]
+            }
+        # 如果最终choices为空，构造一个兜底消息避免前端空白
+        try:
+            if isinstance(openai_response, dict):
+                ch = openai_response.get('choices')
+                if isinstance(ch, list) and len(ch) == 0:
+                    fallback_content = ''
+                    if isinstance(parsed, dict):
+                        fallback_content = str(parsed.get('output_text') or parsed.get('text') or '')
+                    if not fallback_content:
+                        fallback_content = text.strip()
+                    openai_response['choices'] = [{
+                        'index': 0,
+                        'message': {'role': 'assistant', 'content': fallback_content},
+                        'finish_reason': 'stop'
+                    }]
         except Exception:
             pass
+
         log.info(f"RES model={model} status=OK")
         return JSONResponse(content=openai_response)
-        
     except Exception as e:
-        log.error(f"RES model={model} status=FAIL conversion_error")
+        try:
+            sample = (text[:200] + '...') if isinstance(text, str) and len(text) > 200 else text
+            log.error(f"RES model={model} status=FAIL conversion_error sample={sample}")
+        except Exception:
+            log.error(f"RES model={model} status=FAIL conversion_error")
         raise HTTPException(status_code=500, detail="Response conversion failed")
 
 async def fake_stream_response_for_assembly(openai_request: ChatCompletionRequest) -> StreamingResponse:

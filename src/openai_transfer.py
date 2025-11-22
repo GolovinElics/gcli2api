@@ -283,10 +283,21 @@ def assembly_response_to_openai(
     """
     # choices
     choices = []
-    for idx, choice in enumerate(assembly_response.get("choices", [])):
+    _choices_raw = assembly_response.get("choices")
+    if not isinstance(_choices_raw, list):
+        _choices_raw = []
+    for idx, choice in enumerate(_choices_raw):
         msg = choice.get("message", {})
         role = msg.get("role", "assistant")
         content = msg.get("content", "")
+        if isinstance(content, list):
+            parts_text = []
+            for part in content:
+                if isinstance(part, dict):
+                    t = part.get("type")
+                    if t in ("text", "output_text") and part.get("text"):
+                        parts_text.append(part["text"])
+            content = "".join(parts_text) if parts_text else ("" if not content else str(content))
         message = {"role": role, "content": content}
         # 透传工具调用（若存在）
         tool_calls = msg.get("tool_calls") or []

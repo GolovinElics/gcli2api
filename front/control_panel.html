@@ -63,6 +63,14 @@
             margin-bottom: 10px;
         }
 
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 13px;
+            border-radius: 6px;
+            width: auto;
+            margin-bottom: 0;
+        }
+
         .btn:hover {
             background-color: #3367d6;
         }
@@ -154,22 +162,32 @@
 
         .tabs {
             display: flex;
-            border-bottom: 1px solid #ddd;
+            gap: 6px;
+            border-bottom: 1px solid #e5e7eb;
             margin-bottom: 20px;
         }
 
         .tab {
-            padding: 10px 20px;
+            padding: 12px 24px;
             cursor: pointer;
             border: none;
-            background: #f5f5f5;
-            border-bottom: 2px solid transparent;
+            background: #f8fafc;
+            border-radius: 8px 8px 0 0;
+            font-weight: 600;
+            font-size: 16px;
+            color: #374151;
+        }
+
+        .tab:hover {
+            background: #f1f5f9;
+            color: #1f2937;
         }
 
         .tab.active {
-            background: white;
-            border-bottom-color: #4285f4;
-            color: #4285f4;
+            background: #ffffff;
+            color: #2563eb;
+            border-bottom: 2px solid #2563eb;
+            box-shadow: inset 0 -2px 0 #2563eb;
         }
 
         .tab-content {
@@ -915,6 +933,62 @@
             gap: 10px;
             justify-content: flex-end;
         }
+        .playground-status .status {
+            margin-top: 4px;
+            margin-bottom: 12px;
+        }
+
+        .toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 42px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .2s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .2s;
+            border-radius: 50%;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .switch input:checked + .slider {
+            background-color: #34d399;
+        }
+
+        .switch input:checked + .slider:before {
+            transform: translateX(18px);
+        }
     </style>
 </head>
 
@@ -927,7 +1001,7 @@
             <p>请输入访问密码：</p>
             <input type="password" id="loginPassword" placeholder="输入密码" onkeypress="handlePasswordEnter(event)" />
             <br>
-            <button class="btn" onclick="login()">登录</button>
+            <button class="btn btn-sm" onclick="login()">登录</button>
             <div id="loginStatus" style="margin-top:8px"></div>
         </div>
 
@@ -1143,6 +1217,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             <!-- 使用统计标签页 -->
             <div id="usageTab" class="tab-content">
                 <h3>使用统计</h3>
+                <div id="usageStatus"></div>
                 <p>查看每个凭证文件的API调用统计和配额使用情况</p>
 
                 <!-- 统计概览 -->
@@ -1153,7 +1228,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     </div>
                     <div class="stat-item disabled">
                         <span class="stat-number" id="totalFiles">0</span>
-                        <span class="stat-label">活跃文件数</span>
+                        <span class="stat-label">活跃密钥数</span>
                     </div>
                 </div>
 
@@ -1170,9 +1245,9 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 <div class="config-group">
                     <h4>日志统计（按模型/按密钥）</h4>
                     <div class="form-group" style="display:flex; gap:10px; flex-wrap:wrap">
-                        <select id="modelFilter" class="config-input" style="max-width:260px"></select>
-                        <select id="keyFilter" class="config-input" style="max-width:260px"></select>
-                        <select id="onlyFilter" class="config-input" style="max-width:180px">
+                        <select id="modelFilter" class="config-input" style="max-width:260px" onchange="refreshLogSummary()"></select>
+                        <select id="keyFilter" class="config-input" style="max-width:260px" onchange="refreshLogSummary()"></select>
+                        <select id="onlyFilter" class="config-input" style="max-width:180px" onchange="refreshLogSummary()">
                             <option value="">全部</option>
                             <option value="success">仅成功</option>
                             <option value="fail">仅失败</option>
@@ -1207,12 +1282,10 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             <!-- 配置管理标签页 -->
             <div id="configTab" class="tab-content active">
                 <h3>配置管理</h3>
-                <p>管理系统配置参数，修改后立即生效</p>
+                <div id="configStatus"></div>
+                <!-- <p>管理系统配置参数，修改后立即生效</p> -->
 
-                <div class="manage-actions">
-                    <button class="refresh-btn" onclick="loadConfig()">刷新配置</button>
-                    <button class="btn" onclick="saveConfig()">保存配置</button>
-                </div>
+                <div id="configMetaBar" style="margin:6px 0 12px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap"></div>
 
                 <div id="configSection">
                     <div class="loading" id="configLoading">正在加载配置...</div>
@@ -1235,6 +1308,24 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                                 </label>
                                 <small class="config-note">启用后，面板保存的值将覆盖环境变量的优先级</small>
                             </div>
+
+                            <div class="manage-actions">
+                                <button class="refresh-btn btn-sm" onclick="loadConfig()">刷新配置</button>
+                                <button class="btn btn-sm" style="background:#dc3545" onclick="saveConfig()">保存配置</button>
+                            </div>
+                        </div>
+                        <div class="config-group">
+                            <h4>模型配置</h4>
+                            <div class="form-group">
+                                <div id="selectedModelsChips" style="min-height:36px; display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px"></div>
+                                <div class="manage-actions">
+                                    <button class="btn btn-sm" onclick="queryModels()">获取模型列表</button>
+                                    <button class="btn btn-sm" style="background:#ffc107" onclick="fillAllModels()">填入所有模型</button>
+                                    <button class="btn btn-sm" style="background:#6c757d" onclick="clearSelectedModels()">清除所有模型</button>
+                                    <button class="btn btn-sm" onclick="saveSelectedModels()">保存所选模型</button>
+                                </div>
+                            </div>
+                            <small class="config-note">查询后按供应商分组展示模型，勾选并保存即可用于接口列表与操练场</small>
                         </div>
                         <div class="config-group">
                             <h4>服务器配置</h4>
@@ -1288,18 +1379,6 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                                 <small class="config-note">HTTP/HTTPS/SOCKS5Endpoint，留空表示不使用代理</small>
                             </div>
                         </div>
-
-                        <div class="config-group">
-                            <h4>全部配置（只读）</h4>
-                            <div class="manage-actions">
-                                <button class="refresh-btn" onclick="refreshAllConfig()">刷新全部配置</button>
-                            </div>
-                            <div id="allConfigMeta" class="usage-info"></div>
-                            <div class="form-group">
-                                <table class="table" id="allConfigTable"></table>
-                            </div>
-                        </div>
-
 
                         <div class="config-group">
                             <h4>自动封禁配置</h4>
@@ -1356,7 +1435,16 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                             </div>
                         </div>
 
-
+                        <div class="config-group">
+                            <h4>全部配置（只读）</h4>
+                            <div class="manage-actions">
+                                <button class="refresh-btn btn-sm" onclick="refreshAllConfig()">刷新全部配置</button>
+                            </div>
+                            <div id="allConfigMeta" class="usage-info"></div>
+                            <div class="form-group">
+                                <table class="table" id="allConfigTable"></table>
+                            </div>
+                        </div>
                         
                     </div>
                 </div>
@@ -1366,6 +1454,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             <div id="logsTab" class="tab-content">
                 <h3>实时日志</h3>
                 <p>查看系统实时日志输出，支持日志筛选和自动滚动</p>
+                <div id="logsStatus"></div>
 
                 <div class="manage-actions">
                     <button class="refresh-btn" onclick="connectWebSocket()">连接日志流</button>
@@ -1402,6 +1491,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             <!-- 操练场标签页 -->
             <div id="playgroundTab" class="tab-content">
                 <h3>操练场</h3>
+                <div id="playgroundStatus" class="playground-status"></div>
                 <div class="config-group">
                     <div class="form-group" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end">
                         <div style="flex:1; min-width:240px">
@@ -1416,9 +1506,12 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                             <label for="playgroundMaxTokens">max_tokens</label>
                             <input type="number" id="playgroundMaxTokens" class="config-input" min="1" max="128000" value="4096" style="width:140px" />
                         </div>
-                        <div>
-                            <label for="playgroundStream">stream</label>
-                            <input type="checkbox" id="playgroundStream" class="config-input" style="width:auto" />
+                        <div class="toggle-wrap">
+                            <span>stream</span>
+                            <label class="switch">
+                                <input type="checkbox" id="playgroundStream" />
+                                <span class="slider"></span>
+                            </label>
                         </div>
                         <div style="display:flex; gap:8px; flex-wrap:wrap">
                             <button class="btn" style="width:auto" onclick="addMessageRow()">添加消息</button>
@@ -1428,14 +1521,24 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     </div>
                 </div>
                 <div class="config-group">
-                    <h4>会话消息</h4>
-                    <div id="playgroundMessages"></div>
+                    <div onclick="toggleSection('playgroundMessagesWrap')" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; padding:6px 8px; background:#f7f7f7; border-radius:6px">
+                        <span>会话参数</span>
+                        <span id="playgroundMessagesToggle">▼</span>
+                    </div>
+                    <div id="playgroundMessagesWrap" style="margin-top:8px; display:block">
+                        <div id="playgroundMessages"></div>
+                    </div>
                 </div>
                 <div class="config-group">
-                    <h4>工具/函数定义（JSON）</h4>
-                    <div class="form-group">
-                        <textarea id="playgroundToolsJson" class="config-input" placeholder='[{"type":"function","function":{"name":"get_weather","parameters":{"type":"object","properties":{"city":{"type":"string"}}}}}]' style="min-height:100px"></textarea>
-                        <small class="config-note">留空则不启用工具调用；内容需为合法 JSON</small>
+                    <div onclick="toggleSection('playgroundToolsWrap')" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; padding:6px 8px; background:#f7f7f7; border-radius:6px">
+                        <span>工具/函数定义（JSON）</span>
+                        <span id="playgroundToolsToggle">▼</span>
+                    </div>
+                    <div id="playgroundToolsWrap" style="margin-top:8px; display:block">
+                        <div class="form-group">
+                            <textarea id="playgroundToolsJson" class="config-input" placeholder='[{"type":"function","function":{"name":"get_weather","parameters":{"type":"object","properties":{"city":{"type":"string"}}}}}]' style="min-height:100px"></textarea>
+                            <small class="config-note">留空则不启用工具调用；内容需为合法 JSON</small>
+                        </div>
                     </div>
                 </div>
                 <div class="config-group">
@@ -1444,13 +1547,6 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         <div class="card" style="padding:12px; flex:1; min-width:280px">
                             <div><strong>Response</strong></div>
                             <div id="playgroundOutputContent" style="white-space:pre-wrap; margin-top:6px; max-height:240px; overflow:auto"></div>
-                        </div>
-                        <div class="card" style="padding:12px; flex:0 0 280px; min-width:240px">
-                            <div><strong>Meta</strong></div>
-                            <div style="margin-top:6px">
-                                <div>Request ID: <span id="playgroundRequestId"></span></div>
-                                <div>Tokens used: <span id="playgroundTokensUsed"></span></div>
-                            </div>
                         </div>
                     </div>
                     <div class="form-group">
@@ -1462,7 +1558,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
 
             
 
-            <div id="statusSection"></div>
+            
 
             
         </div>
@@ -1499,6 +1595,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         let uploadSelectedFiles = []; // 上传页面用的文件列表
         let authToken = '';
         let credsData = {};
+        let selectedModels = [];
+        let queriedModels = { grouped: { Anthropic: [], OpenAI: [], Google: [], Other: [] }, models: [] };
 
         // 分页和筛选相关变量
         let filteredCredsData = {};
@@ -1516,7 +1614,21 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
 
         function showStatus(message, type = 'info') {
             const mainHidden = document.getElementById('mainSection')?.classList.contains('hidden');
-            const target = mainHidden ? document.getElementById('loginStatus') : document.getElementById('statusSection');
+            let target = null;
+            if (mainHidden) {
+                target = document.getElementById('loginStatus');
+            } else {
+                const active = document.querySelector('.tab-content.active');
+                const map = {
+                    'playgroundTab': 'playgroundStatus',
+                    'logsTab': 'logsStatus',
+                    'usageTab': 'usageStatus',
+                    'configTab': 'configStatus'
+                };
+                if (active && map[active.id]) {
+                    target = document.getElementById(map[active.id]);
+                }
+            }
             if (target) {
                 target.innerHTML = `<div class="status ${type}">${message}</div>`;
             } else {
@@ -1572,12 +1684,14 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 const onclick = btn.getAttribute('onclick') || '';
                 if (onclick.includes("'" + tabName + "'")) btn.classList.add('active');
             });
+            ['playgroundStatus','logsStatus','usageStatus','configStatus'].forEach(id=>{ const el=document.getElementById(id); if (el) el.innerHTML=''; });
             if (tabName === 'usage') {
                 refreshUsageStats();
                 refreshLogSummary();
             }
             if (tabName === 'config') {
                 loadConfig();
+                loadSelectedModelsFromConfig();
             }
             if (tabName === 'logs') {
                 connectWebSocket();
@@ -2661,6 +2775,18 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             }
             if (useAssemblyEl) useAssemblyEl.checked = !!currentConfig.use_assembly;
             if (overrideEl) overrideEl.checked = !!currentConfig.override_env;
+            const callsRotEl = document.getElementById('callsPerRotation');
+            const r429EnEl = document.getElementById('retry429Enabled');
+            const r429MaxEl = document.getElementById('retry429MaxRetries');
+            const r429IntEl = document.getElementById('retry429Interval');
+            const banEnEl = document.getElementById('autoBanEnabled');
+            const banCodesEl = document.getElementById('autoBanErrorCodes');
+            if (callsRotEl) callsRotEl.value = currentConfig.calls_per_rotation ?? 100;
+            if (r429EnEl) r429EnEl.checked = !!currentConfig.retry_429_enabled;
+            if (r429MaxEl) r429MaxEl.value = currentConfig.retry_429_max_retries ?? 5;
+            if (r429IntEl) r429IntEl.value = currentConfig.retry_429_interval ?? 1.0;
+            if (banEnEl) banEnEl.checked = !!currentConfig.auto_ban_enabled;
+            if (banCodesEl) banCodesEl.value = Array.isArray(currentConfig.auto_ban_error_codes) ? currentConfig.auto_ban_error_codes.join(',') : (currentConfig.auto_ban_error_codes||'');
             lockField('assemblyApiKeys','ASSEMBLY_API_KEYS');
             lockField('useAssembly','USE_ASSEMBLY');
             lockField('configApiPassword','API_PASSWORD');
@@ -2680,6 +2806,12 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             lockField('configPanelPassword','PANEL_PASSWORD');
             lockField('port','PORT');
             lockField('host','HOST');
+            lockField('callsPerRotation','CALLS_PER_ROTATION');
+            lockField('retry429Enabled','RETRY_429_ENABLED');
+            lockField('retry429MaxRetries','RETRY_429_MAX_RETRIES');
+            lockField('retry429Interval','RETRY_429_INTERVAL');
+            lockField('autoBanEnabled','AUTO_BAN');
+            lockField('autoBanErrorCodes','AUTO_BAN_ERROR_CODES');
         }
 
         function lockField(id, envName) {
@@ -2724,7 +2856,13 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 api_password: document.getElementById('configApiPassword').value.trim(),
                 panel_password: document.getElementById('configPanelPassword').value.trim(),
                 host: document.getElementById('host').value.trim(),
-                port: parseInt(document.getElementById('port').value) || 7861
+                port: parseInt(document.getElementById('port').value) || 7861,
+                calls_per_rotation: parseInt(document.getElementById('callsPerRotation').value) || 100,
+                retry_429_enabled: !!document.getElementById('retry429Enabled').checked,
+                retry_429_max_retries: parseInt(document.getElementById('retry429MaxRetries').value) || 5,
+                retry_429_interval: parseFloat(document.getElementById('retry429Interval').value) || 1.0,
+                auto_ban_enabled: !!document.getElementById('autoBanEnabled').checked,
+                auto_ban_error_codes: document.getElementById('autoBanErrorCodes').value
             };
             const generalPwd = document.getElementById('configPassword').value.trim();
             if (generalPwd) payload.password = generalPwd;
@@ -2757,12 +2895,24 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
 
         async function refreshAllConfig(){
             const metaEl = document.getElementById('allConfigMeta');
+            const metaBar = document.getElementById('configMetaBar');
             const tbl = document.getElementById('allConfigTable');
             try{
                 const res = await fetch('/config/all', {headers: getAuthHeaders()});
                 const data = await res.json();
                 const cfg = data.config || {};
-                if (metaEl) metaEl.textContent = `后端: ${data.backend||'file'} · 前缀: ${data.prefix||''}`;
+                const backend = data.backend||'file';
+                const prefix = data.prefix||'';
+                if (metaEl) metaEl.textContent = `后端: ${backend} · 前缀: ${prefix}`;
+                if (metaBar){
+                    const colorMap = {redis:'#28a745', file:'#6c757d', postgres:'#0d6efd', mongodb:'#6f42c1'};
+                    const bcol = colorMap[backend]||'#6c757d';
+                    metaBar.innerHTML = `
+                        <span class="badge" style="background:${bcol}; color:white; padding:4px 8px; border-radius:12px">后端: ${backend}</span>
+                        <span class="badge" style="background:#17a2b8; color:white; padding:4px 8px; border-radius:12px">前缀: ${prefix}</span>
+                        <span style="margin-left:8px; color:#666; font-size:12px">全部配置已刷新（${Object.keys(cfg).length} 项）</span>
+                    `;
+                }
                 const catMap = {
                     host: '服务器', port: '服务器',
                     api_password: '密码', panel_password: '密码', password: '密码',
@@ -2778,7 +2928,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     const v = cfg[k];
                     const vs = typeof v === 'object' ? JSON.stringify(v) : String(v);
                     const cat = catMap[k] || '其他';
-                    return `<tr><td style="width:120px;color:#666">${cat}</td><td style="width:220px;color:#555">${k}</td><td style="color:#222">${vs}</td></tr>`;
+                    return `<tr><td style="width:120px;color:#666">${cat}</td><td style="width:220px;color:#555">${k}</td><td style="color:#222;overflow-wrap:anywhere;word-break:break-word;">${vs}</td></tr>`;
                 }).join('');
                 if (tbl) tbl.innerHTML = `<thead><tr><th>分类</th><th>键</th><th>值</th></tr></thead><tbody>${rows}</tbody>`;
                 showStatus('全部配置加载成功','success');
@@ -3257,7 +3407,6 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             console.log('Page loaded');
             console.log('Login section exists:', !!document.getElementById('loginSection'));
             console.log('Main section exists:', !!document.getElementById('mainSection'));
-            console.log('Status section exists:', !!document.getElementById('statusSection'));
 
             // 添加勾选框事件监听器
             const checkbox = document.getElementById('getAllProjectsCreds');
@@ -3335,12 +3484,18 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             if (key) params.push('key=' + encodeURIComponent(key));
             if (only) params.push('only=' + encodeURIComponent(only));
             if (params.length) url += '?' + params.join('&');
-            const res = await fetch(url, { headers: getAuthHeaders() });
-            const data = await res.json();
+            const [resFiltered, resAll] = await Promise.all([
+                fetch(url, { headers: getAuthHeaders() }),
+                fetch('/usage/aggregated', { headers: getAuthHeaders() })
+            ]);
+            const data = await resFiltered.json();
+            const dataAll = await resAll.json();
             const ls = data.log_summary || {models:{},keys:{},total:{}};
+            const lsAll = dataAll.log_summary || {models:{},keys:{},total:{}};
             renderLogSummary(ls);
-            if (!model) populateModelFilter(ls);
-            populateKeyFilter(ls);
+            // 下拉选项始终用未过滤数据填充，避免只剩一个选项
+            populateModelFilter(lsAll);
+            populateKeyFilter(lsAll);
             renderModelRanking(ls);
         }
 
@@ -3478,7 +3633,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
 
             div.innerHTML = `
                 <div class="usage-header">
-                    <div class="usage-filename">${filename}</div>
+                    <div class="usage-filename">${stats.display_name || filename}</div>
                 </div>
                 
                 <div class="usage-progress">
@@ -3496,6 +3651,13 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         <span class="usage-info-label">下次重置时间</span>
                         <span class="usage-info-value">${formatTime(stats.next_reset_time)}</span>
                     </div>
+                </div>
+                <div class="usage-info" style="margin-top:8px">
+                    <div class="usage-info-item" style="grid-column: 1 / -1;">
+                        <span class="usage-info-label">各模型调用次数</span>
+                        <span class="usage-info-value">${Object.keys(stats.model_counts||{}).length===0? '暂无' : ''}</span>
+                    </div>
+                    ${Object.entries(stats.model_counts||{}).slice(0,12).map(([m,c])=>`<div class="usage-info-item"><span class="usage-info-label">${m}</span><span class="usage-info-value">${c}</span></div>`).join('')}
                 </div>
                 
                 <div class="usage-actions">
@@ -3572,6 +3734,20 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
 
         
     </script>
+    <!-- 模型选择弹窗 -->
+    <div id="modelsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">选择模型</h3>
+                <button class="modal-close" onclick="closeModelsModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modelsModalBody" style="max-height:420px; overflow:auto"></div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModelsModal()" style="background:#6c757d">取消</button>
+                <button class="btn" onclick="saveSelectedModels()">确定</button>
+            </div>
+        </div>
+    </div>
 <script>
         async function initPlayground(){
             try{
@@ -3579,7 +3755,6 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 clearMessages();
                 addMessageRow('system','You are a helpful assistant.');
                 addMessageRow('user','hello');
-                addMessageRow('assistant','Hi — hello! How can I help you today?');
                 showStatus('操练场已就绪','success');
             }catch(e){
                 showStatus('加载模型失败: '+e.message,'error');
@@ -3600,6 +3775,22 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 sel.appendChild(opt);
             });
             if (!sel.value && list.length>0){ sel.value = (list[0].id || list[0]); }
+            sel.onchange = ()=> applyModelDefaults(sel.value);
+            applyModelDefaults(sel.value);
+        }
+
+        function applyModelDefaults(modelId){
+            const meta = modelMetaFromConfig[modelId] || (queriedModels.meta||{})[modelId] || {};
+            const maxT = parseInt(meta.max_tokens || 0);
+            if (maxT > 0){
+                const input = document.getElementById('playgroundMaxTokens');
+                if (input) input.value = maxT;
+            }
+            const defs = meta.default_parameters || {};
+            if (defs && (defs.temperature !== undefined && defs.temperature !== null)){
+                const t = document.getElementById('playgroundTemperature');
+                if (t) t.value = defs.temperature;
+            }
         }
 
         function addMessageRow(role='user', content=''){
@@ -3629,12 +3820,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             const wrap = document.getElementById('playgroundMessages');
             wrap.innerHTML = '';
             const out = document.getElementById('playgroundOutputContent');
-            const rid = document.getElementById('playgroundRequestId');
-            const tok = document.getElementById('playgroundTokensUsed');
             const raw = document.getElementById('playgroundRawJson');
             if (out) out.textContent = '';
-            if (rid) rid.textContent = '';
-            if (tok) tok.textContent = '';
             if (raw) raw.textContent = '';
         }
 
@@ -3663,18 +3850,19 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             const enableStream = !!document.getElementById('playgroundStream')?.checked;
             if (enableStream) body.stream = true;
             try{
+                collapseAfterSend();
                 showStatus('发送中...','info');
                 const res = await fetch('/v1/chat/completions', { method:'POST', headers: getAuthHeaders(), body: JSON.stringify(body) });
                 if (!enableStream) {
                     const data = await res.json();
                     if (!res.ok){ throw new Error(data.detail||'请求失败'); }
-                    const msg = (((data.choices||[])[0]||{}).message||{}).content || '';
-                    const rid = data.id || (data.request_id||'');
-                    const usage = data.usage || {};
-                    const total = usage.total_tokens || usage.totalTokenCount || 0;
+                    const first = ((data.choices||[])[0]||{});
+                    let msg = ((first.message||{}).content);
+                    if (Array.isArray(msg)){
+                        msg = msg.map(p=> (typeof p==='string')? p : (p && (p.text||''))).join('');
+                    }
+                    msg = msg || '';
                     document.getElementById('playgroundOutputContent').textContent = msg;
-                    document.getElementById('playgroundRequestId').textContent = rid;
-                    document.getElementById('playgroundTokensUsed').textContent = total;
                     document.getElementById('playgroundRawJson').textContent = JSON.stringify(data, null, 2);
                     showStatus('已完成','success');
                 } else {
@@ -3682,8 +3870,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     const decoder = new TextDecoder('utf-8');
                     let buf = '';
                     const outEl = document.getElementById('playgroundOutputContent');
-                    const tokEl = document.getElementById('playgroundTokensUsed');
                     const rawEl = document.getElementById('playgroundRawJson');
+                    let rawBuf = '';
                     while (true) {
                         const { value, done } = await reader.read();
                         if (done) break;
@@ -3701,10 +3889,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                                 const delta = ch.delta||{};
                                 const content = delta.content||'';
                                 if (content && outEl) outEl.textContent += content;
-                                const usage = obj.usage||{};
-                                const total = usage.total_tokens||usage.totalTokenCount||0;
-                                if (total && tokEl) tokEl.textContent = total;
-                                if (rawEl) rawEl.textContent = payload;
+                                rawBuf += payload + "\n\n";
+                                if (rawEl) rawEl.textContent = rawBuf;
                             } catch(e) {}
                         }
                     }
@@ -3714,7 +3900,180 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 showStatus(e.message,'error');
             }
         }
-</script>
-</body>
 
-</html>
+        function toggleSection(id){
+            const el = document.getElementById(id);
+            if (!el) return;
+            const show = (el.style.display === 'none');
+            el.style.display = show ? 'block' : 'none';
+            const map = {
+                'playgroundMessagesWrap': 'playgroundMessagesToggle',
+                'playgroundToolsWrap': 'playgroundToolsToggle'
+            };
+            const tid = map[id];
+            const t = tid ? document.getElementById(tid) : null;
+            if (t) t.textContent = show ? '▼' : '▶';
+        }
+
+        function collapseAfterSend(){
+            ['playgroundMessagesWrap','playgroundToolsWrap'].forEach(id=>{
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            const msgToggle = document.getElementById('playgroundMessagesToggle');
+            const toolsToggle = document.getElementById('playgroundToolsToggle');
+            if (msgToggle) msgToggle.textContent = '▶';
+            if (toolsToggle) toolsToggle.textContent = '▶';
+        }
+        
+        function getModelCategory(id){
+            const s = String(id||'');
+            if (s.startsWith('claude')) return 'Anthropic';
+            if (s.startsWith('gpt') || s.startsWith('chatgpt')) return 'OpenAI';
+            if (s.startsWith('gemini')) return 'Google';
+            return 'Other';
+        }
+
+        function getCatColors(cat){
+            const m = {
+                Anthropic: { bg:'#f2e9ff', border:'#6f42c1', text:'#4b2e83' },
+                OpenAI: { bg:'#e7f0ff', border:'#1f6feb', text:'#1f3f8a' },
+                Google: { bg:'#e8f7ee', border:'#2b9348', text:'#1f6b2e' },
+                Other: { bg:'#eee', border:'#999', text:'#555' }
+            };
+            return m[cat] || m.Other;
+        }
+
+        function formatTokensShort(v){
+            const n = parseInt(v || 0);
+            if (!n || n <= 0) return '-';
+            if (n >= 1000000) return Math.round(n/1000000) + 'm';
+            if (n >= 1000) return Math.round(n/1000) + 'k';
+            return String(n);
+        }
+
+        function renderSelectedModelsChips() {
+            const wrap = document.getElementById('selectedModelsChips');
+            if (!wrap) return;
+            wrap.innerHTML = '';
+            selectedModels.forEach(m => {
+                const chip = document.createElement('span');
+                const cat = getModelCategory(m);
+                const colors = getCatColors(cat);
+                const meta = (modelMetaFromConfig[m] || (queriedModels.meta||{})[m] || {});
+                const ctx = formatTokensShort(meta.context_length);
+                chip.className = 'badge';
+                chip.style = `display:inline-flex; align-items:center; gap:6px; background:${colors.bg}; color:${colors.text}; padding:4px 10px; border-radius:12px; margin:2px; font-size:12px; border-left:4px solid ${colors.border}`;
+                chip.innerHTML = `<span>${m}</span><span style="font-size:11px; color:#555">${ctx}</span>`;
+                wrap.appendChild(chip);
+            });
+        }
+
+        async function loadSelectedModelsFromConfig(){
+            try{
+                const res = await fetch('/config/all', { headers: getAuthHeaders() });
+                const data = await res.json();
+                const cfg = data.config || {};
+                const sel = cfg.available_models_selected || [];
+                selectedModels = Array.isArray(sel) ? sel : [];
+                modelMetaFromConfig = cfg.available_models_meta || {};
+                renderSelectedModelsChips();
+            }catch(e){
+                // ignore
+            }
+        }
+
+        async function queryModels(){
+            try{
+                const res = await fetch('/models/query', { headers: getAuthHeaders() });
+                const data = await res.json();
+                queriedModels = { grouped: data.grouped||{}, models: data.models||[], meta: data.meta||{} };
+                openModelsModal();
+            }catch(e){
+                showStatus('获取模型列表失败: '+e.message, 'error');
+            }
+        }
+
+        function openModelsModal(){
+            const modal = document.getElementById('modelsModal');
+            const body = document.getElementById('modelsModalBody');
+            if (!modal || !body) return;
+            const groups = queriedModels.grouped || {};
+            const ordered = ['Anthropic','OpenAI','Google','Other'];
+            let html = '';
+            ordered.forEach(cat=>{
+                const items = groups[cat]||[];
+                const colors = getCatColors(cat);
+                html += `<div style="margin:8px 0"><div style="font-weight:600; margin-bottom:6px; color:${colors.text}">${cat} (${items.length})</div>`;
+                items.forEach(m=>{
+                    const checked = selectedModels.includes(m) ? 'checked' : '';
+                    const mt = (queriedModels.meta||{})[m] || {};
+                    const ctx = formatTokensShort(mt.context_length);
+                    const mx = mt.max_tokens ? (mt.max_tokens>=1000? Math.round(mt.max_tokens/1000)+'k' : mt.max_tokens) : '-';
+                    html += `<label style="display:inline-flex; align-items:center; gap:6px; margin:4px 8px 4px 0; padding:4px 8px; border-left:4px solid ${colors.border}; background:${colors.bg}; border-radius:8px"><input type="checkbox" class="model-check" value="${m}" ${checked}/> <span style="color:${colors.text}">${m}</span><span style="color:#666; font-size:12px">(ctx:${ctx}, max:${mx})</span></label>`;
+                });
+                html += `</div>`;
+            });
+            body.innerHTML = html || '<div>未查询到模型</div>';
+            modal.style.display = 'block';
+        }
+
+        function closeModelsModal(){
+            const modal = document.getElementById('modelsModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function collectCheckedModels(){
+            const checks = Array.from(document.querySelectorAll('.model-check'));
+            return checks.filter(c=> c.checked).map(c=> c.value);
+        }
+
+        async function fillAllModels(){
+            try{
+                if (!queriedModels.models || queriedModels.models.length === 0){
+                    const res = await fetch('/models/query', { headers: getAuthHeaders() });
+                    const data = await res.json();
+                    queriedModels = { grouped: data.grouped||{}, models: data.models||[], meta: data.meta||{} };
+                }
+                selectedModels = Array.from(new Set([...(queriedModels.models||[])]));
+                renderSelectedModelsChips();
+                const res2 = await fetch('/models/save', { method:'POST', headers:getAuthHeaders(), body: JSON.stringify({ selected_models: selectedModels }) });
+                const data2 = await res2.json();
+                if (res2.ok){
+                    showStatus(`已保存 ${data2.saved_count} 个模型`, 'success');
+                } else {
+                    showStatus(`保存失败: ${data2.detail||data2.error||'未知错误'}`, 'error');
+                }
+            }catch(e){
+                showStatus('填充失败: '+ e.message, 'error');
+            }
+        }
+
+        function clearSelectedModels(){
+            selectedModels = [];
+            renderSelectedModelsChips();
+        }
+
+        async function saveSelectedModels(){
+            // 如果弹窗打开，优先从弹窗勾选收集
+            const modal = document.getElementById('modelsModal');
+            if (modal && modal.style.display === 'block'){
+                selectedModels = collectCheckedModels();
+            }
+            try{
+                const res = await fetch('/models/save', { method:'POST', headers:getAuthHeaders(), body: JSON.stringify({ selected_models: selectedModels }) });
+                const data = await res.json();
+                if (res.ok){
+                    renderSelectedModelsChips();
+                    closeModelsModal();
+                    showStatus(`已保存 ${data.saved_count} 个模型`, 'success');
+                } else {
+                    showStatus(`保存失败: ${data.detail||data.error||'未知错误'}`, 'error');
+                }
+            }catch(e){
+                showStatus('保存失败: '+e.message, 'error');
+            }
+        }
+    </script>
+    </body>
+    </html>
