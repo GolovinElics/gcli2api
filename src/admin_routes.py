@@ -20,7 +20,7 @@ from config import (
 )
 from .storage_adapter import get_storage_adapter
 from .usage_stats import get_usage_stats, get_aggregated_stats, get_usage_stats_instance
-from .assembly_client import fetch_assembly_models
+from .assembly_client import fetch_assembly_models, get_rate_limit_info
 
 
 router = APIRouter()
@@ -465,3 +465,45 @@ async def login(payload: Dict[str, Any]):
     if password == api_pwd:
         return JSONResponse(content={"token": password})
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="密码错误")
+
+
+@router.get("/rate-limits")
+async def rate_limits(token: str = Depends(authenticate)):
+    """获取所有API Key的速率限制信息"""
+    rate_info = get_rate_limit_info()
+    
+    # 获取配置的所有keys用于显示完整列表
+    keys = await get_assembly_api_keys()
+    
+    # 构建完整的速率限制信息
+    result = []
+    for idx, key in enumerate(keys):
+        from .assembly_client import _mask_key
+        masked = _mask_key(key)
+        
+        if idx in rate_info:
+            info = rate_info[idx]
+            result.append({
+                "index": idx,
+                "key": masked,
+                "limit": info.get("limit", 0),
+                "remaining": info.get("remaining", 0),
+                "used": info.get("used", 0),
+                "reset_in_seconds": info.get("reset_in_seconds", 0),
+                "last_request_time": info.get("last_request_time", 0),
+                "status": "active" if info.get("remaining", 0) > 0 else "exhausted"
+            })
+        else:
+            # 未使用过的key
+            result.append({
+                "index": idx,
+                "key": masked,
+                "limit": 0,
+                "remaining": 0,
+                "used": 0,
+                "reset_in_seconds": 0,
+                "last_request_time": 0,
+                "status": "unused"
+            })
+    
+    return JSONResponse(content={"rate_limits": result})

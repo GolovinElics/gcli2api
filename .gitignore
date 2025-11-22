@@ -1,6 +1,9 @@
 # Credential files - should never be committed
 *.json
 *.toml
+*.md
+test_*.sh
+test_*.py
 creds/
 
 # Environment configuration

@@ -35,6 +35,7 @@ def _sanitize_messages(messages) -> list:
 
 _rr_counter = itertools.count()
 _failed_keys = {}  # 记录失败的 Key 和失败时间
+_rate_limit_info = {}  # 记录每个 Key 的速率限制信息
 
 def _next_key_index(n: int) -> int:
     """
@@ -80,6 +81,86 @@ def _mask_key(key: str) -> str:
     if len(k) <= 8:
         return k[:2] + "***"
     return k[:4] + "..." + k[-4:]
+
+def _update_rate_limit_info(idx: int, api_key: str, headers: dict):
+    """更新速率限制信息"""
+    import time
+    try:
+        limit = headers.get('x-ratelimit-limit')
+        remaining = headers.get('x-ratelimit-remaining')
+        reset = headers.get('x-ratelimit-reset')
+        
+        if limit is not None or remaining is not None:
+            masked_key = _mask_key(api_key)
+            if idx not in _rate_limit_info:
+                _rate_limit_info[idx] = {
+                    "key": masked_key,
+                    "full_key": api_key,  # 保存完整key用于匹配
+                }
+            
+            info = _rate_limit_info[idx]
+            info["last_request_time"] = time.time()
+            
+            if limit is not None:
+                try:
+                    info["limit"] = int(limit)
+                except (ValueError, TypeError):
+                    pass
+            
+            if remaining is not None:
+                try:
+                    info["remaining"] = int(remaining)
+                    info["used"] = info.get("limit", 0) - int(remaining)
+                except (ValueError, TypeError):
+                    pass
+            
+            if reset is not None:
+                try:
+                    reset_val = int(reset)
+                    if reset_val > 0:
+                        # reset是秒数，计算重置时间戳
+                        info["reset_time"] = time.time() + reset_val
+                    else:
+                        # reset为0表示已经可以重置或者在下一分钟
+                        info["reset_time"] = time.time() + 60
+                except (ValueError, TypeError):
+                    pass
+            
+            log.debug(f"Updated rate limit info for key {masked_key}: limit={info.get('limit')}, remaining={info.get('remaining')}, reset_in={reset}s")
+    except Exception as e:
+        log.error(f"Failed to update rate limit info: {e}")
+
+def get_rate_limit_info() -> dict:
+    """获取所有key的速率限制信息"""
+    import time
+    current_time = time.time()
+    result = {}
+    
+    for idx, info in _rate_limit_info.items():
+        key_info = {
+            "key": info.get("key", "unknown"),
+            "limit": info.get("limit", 0),
+            "remaining": info.get("remaining", 0),
+            "used": info.get("used", 0),
+            "last_request_time": info.get("last_request_time", 0),
+        }
+        
+        # 计算重置剩余时间
+        reset_time = info.get("reset_time", 0)
+        if reset_time > current_time:
+            key_info["reset_in_seconds"] = int(reset_time - current_time)
+        else:
+            key_info["reset_in_seconds"] = 0
+            # 如果已经过了重置时间，重置计数器
+            if info.get("limit", 0) > 0:
+                info["remaining"] = info["limit"]
+                info["used"] = 0
+                key_info["remaining"] = info["limit"]
+                key_info["used"] = 0
+        
+        result[idx] = key_info
+    
+    return result
 
 async def fetch_assembly_models() -> Dict[str, Any]:
     """
@@ -215,6 +296,9 @@ async def send_assembly_request(
                 log.debug(f"REQ Details - Payload: {post_data[:500]}{'...' if len(post_data) > 500 else ''}")
                 
                 resp = await client.post(endpoint, content=post_data, headers=headers)
+                
+                # 更新速率限制信息
+                _update_rate_limit_info(idx, api_key, resp.headers)
                 
                 # 检查是否需要重试（429 或 400 速率限制错误）
                 should_retry = False
