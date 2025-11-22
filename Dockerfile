@@ -5,6 +5,6 @@ WORKDIR /app
 COPY . .
 ARG PIP_INDEX_URL=https://pypi.org/simple
 RUN python -m pip install --upgrade pip && \
-    python -m pip install --no-cache-dir -i "$PIP_INDEX_URL" fastapi hypercorn redis toml aiofiles httpx
+    python -m pip install --no-cache-dir -i "$PIP_INDEX_URL" fastapi hypercorn redis toml aiofiles httpx python-dotenv
 EXPOSE 7861
 CMD ["python", "web.py"]
