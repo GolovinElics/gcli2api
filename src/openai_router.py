@@ -128,7 +128,6 @@ async def chat_completions(
         log.debug(f"  [{i}] role={role}, has_tool_calls={has_tool_calls}, content={content_preview}...")
     
     # 重建缺失的 assistant 消息（临时解决方案）
-    from .models import ChatCompletionRequest
     rebuilt_messages = []
     for i, msg in enumerate(request_data.messages):
         role = getattr(msg, "role", "user")
