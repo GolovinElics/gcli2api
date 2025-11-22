@@ -983,31 +983,49 @@
             padding: 8px 16px;
             font-size: 14px;
             border-radius: 5px;
-            border: 1px solid #ddd;
+            border: none;
             cursor: pointer;
             transition: all 0.2s ease;
-            background: white;
-            color: #333;
+            color: white;
         }
         
-        .playground-btn:hover {
-            border-color: #4285f4;
-            background: #f8f9fa;
+        /* Add button - neutral gray */
+        .playground-btn-add {
+            background: #6c757d;
         }
         
-        .playground-btn:active {
-            background: #e9ecef;
+        .playground-btn-add:hover {
+            background: #5a6268;
         }
         
+        .playground-btn-add:active {
+            background: #545b62;
+        }
+        
+        /* Clear button - warning orange */
+        .playground-btn-clear {
+            background: #ff9800;
+        }
+        
+        .playground-btn-clear:hover {
+            background: #e68900;
+        }
+        
+        .playground-btn-clear:active {
+            background: #cc7a00;
+        }
+        
+        /* Send button - primary blue */
         .playground-btn-send {
             background: #4285f4;
-            color: white;
-            border-color: #4285f4;
         }
         
         .playground-btn-send:hover {
             background: #3367d6;
-            border-color: #3367d6;
+        }
+        
+        .playground-btn-send:active {
+            background: #2b56c4;
         }
 
         .usage-info-value {
@@ -1087,6 +1105,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            padding-bottom: 2px;
         }
 
         .switch {
@@ -1159,8 +1178,8 @@
                 <button class="tab active" onclick="switchTab('config')">配置管理</button>
                 <button class="tab" onclick="switchTab('ratelimit')">速率限制</button>
                 <button class="tab" onclick="switchTab('usage')">使用统计</button>
-                <button class="tab" onclick="switchTab('logs')">实时日志</button>
                 <button class="tab" onclick="switchTab('playground')">操练场</button>
+                <button class="tab" onclick="switchTab('logs')">实时日志</button>
             </div>
 
 
@@ -1697,8 +1716,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         
                         <!-- 操作按钮 - 一排居中 -->
                         <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap">
-                            <button class="playground-btn" onclick="addMessageRow()">添加消息</button>
-                            <button class="playground-btn" onclick="clearMessages()">清空消息</button>
+                            <button class="playground-btn playground-btn-add" onclick="addMessageRow()">添加消息</button>
+                            <button class="playground-btn playground-btn-clear" onclick="clearMessages()">清空消息</button>
                             <button class="playground-btn playground-btn-send" onclick="sendPlayground()">发送测试</button>
                         </div>
                     </div>
@@ -1972,7 +1991,14 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     (key.limit > 0 ? '已重置' : '未使用');
                 
                 const lastRequestTime = key.last_request_time > 0 ? 
-                    new Date(key.last_request_time * 1000).toLocaleTimeString('zh-CN') : 
+                    new Date(key.last_request_time * 1000).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    }) : 
                     '从未使用';
                 
                 html += `
@@ -3784,37 +3810,40 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 usageLoading.style.display = 'block';
                 usageList.innerHTML = '';
 
-                // 获取所有文件的使用统计
-                const [statsResponse, aggregatedResponse] = await Promise.all([
-                    fetch('/usage/stats', {
-                        method: 'GET',
-                        headers: getAuthHeaders()
-                    }),
-                    fetch('/usage/aggregated', {
-                        method: 'GET',
-                        headers: getAuthHeaders()
-                    })
-                ]);
+                // 获取聚合数据（包含per-key model statistics）
+                const aggregatedResponse = await fetch('/usage/aggregated', {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
 
-                const statsData = await statsResponse.json();
                 const aggregatedData = await aggregatedResponse.json();
 
-                if (statsResponse.ok && aggregatedResponse.ok) {
-                    if (statsData && statsData.filename) {
-                        const { filename, ...rest } = statsData;
-                        usageStatsData = {};
-                        usageStatsData[filename] = rest;
-                    } else {
-                        usageStatsData = statsData || {};
+                if (aggregatedResponse.ok) {
+                    // 从aggregatedData.log_summary.keys构建usageStatsData
+                    usageStatsData = {};
+                    const keys = (aggregatedData.log_summary && aggregatedData.log_summary.keys) || {};
+                    
+                    // 为每个key创建统计数据结构
+                    for (const [keyName, keyData] of Object.entries(keys)) {
+                        // 计算总调用次数（成功+失败）
+                        const totalCalls = (keyData.ok || 0) + (keyData.fail || 0);
+                        
+                        usageStatsData[keyName] = {
+                            display_name: keyName,
+                            total_calls: totalCalls,
+                            daily_limit_total: 1000, // 默认限制
+                            model_counts: keyData.model_counts || {},
+                            next_reset_time: aggregatedData.next_reset_time || null
+                        };
                     }
 
                     document.getElementById('totalApiCalls').textContent = aggregatedData.total_all_model_calls || 0;
-                    document.getElementById('totalFiles').textContent = aggregatedData.total_files || 0;
+                    document.getElementById('totalFiles').textContent = Object.keys(usageStatsData).length;
 
                     // 渲染使用统计列表
                     renderUsageList();
 
-                    showStatus(`已加载 ${aggregatedData.total_files} 个文件的使用统计`, 'success');
+                    showStatus(`已加载 ${Object.keys(usageStatsData).length} 个密钥的使用统计`, 'success');
                 } else {
                     showStatus('加载使用统计失败', 'error');
                 }
@@ -3982,9 +4011,17 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 }
             }
 
+            // 格式化显示名称
+            let displayName = stats.display_name || filename;
+            // 如果是 key:hash 格式，进行脱敏处理
+            if (displayName.startsWith('key:') && displayName.length > 20) {
+                const hash = displayName.substring(4); // 移除 "key:" 前缀
+                displayName = `Key: ${hash.substring(0, 4)}...${hash.substring(hash.length - 4)}`;
+            }
+            
             div.innerHTML = `
                 <div class="usage-header">
-                    <div class="usage-filename">${stats.display_name || filename}</div>
+                    <div class="usage-filename">${displayName}</div>
                 </div>
                 
                 <div class="usage-progress">
@@ -4003,12 +4040,23 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         <span class="usage-info-value">${formatTime(stats.next_reset_time)}</span>
                     </div>
                 </div>
-                <div class="usage-info" style="margin-top:8px">
-                    <div class="usage-info-item" style="grid-column: 1 / -1;">
-                        <span class="usage-info-label">各模型调用次数</span>
-                        <span class="usage-info-value">${Object.keys(stats.model_counts||{}).length===0? '暂无' : ''}</span>
+                <div style="margin-top:12px">
+                    <div style="font-size:13px; font-weight:600; color:#555; margin-bottom:8px">各模型调用次数</div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; min-height:24px">
+                        ${Object.keys(stats.model_counts||{}).length===0 ? 
+                            '<span style="color:#999; font-size:12px">暂无数据</span>' : 
+                            Object.entries(stats.model_counts||{})
+                                .sort((a, b) => b[1] - a[1])  // 按调用次数从大到小排序
+                                .map(([m, c]) => {
+                                    const cat = getModelCategory(m);
+                                    const colors = getCatColors(cat);
+                                    return `<span style="display:inline-flex; align-items:center; gap:4px; background:${colors.bg}; color:${colors.text}; padding:4px 10px; border-radius:12px; font-size:12px; border-left:4px solid ${colors.border}">
+                                        <span style="font-weight:600; color:${colors.border}">【${c}】</span>
+                                        <span>${m}</span>
+                                    </span>`;
+                                }).join('')
+                        }
                     </div>
-                    ${Object.entries(stats.model_counts||{}).slice(0,12).map(([m,c])=>`<div class="usage-info-item"><span class="usage-info-label">${m}</span><span class="usage-info-value">${c}</span></div>`).join('')}
                 </div>
                 
                 <div class="usage-actions">

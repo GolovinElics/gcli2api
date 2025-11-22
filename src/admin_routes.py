@@ -190,7 +190,13 @@ async def save_config(payload: Dict[str, Any], token: str = Depends(authenticate
 @router.get("/usage/stats")
 async def usage_stats(token: str = Depends(authenticate)):
     stats = await get_usage_stats()
-    return JSONResponse(content=stats)
+    # 过滤掉无效的key（如 "assemblyai"）
+    filtered_stats = {}
+    for key, value in stats.items():
+        # 只保留以 "key:" 开头的有效统计
+        if key.startswith("key:") or key.startswith("creds/"):
+            filtered_stats[key] = value
+    return JSONResponse(content=filtered_stats)
 
 
 @router.get("/usage/aggregated")
@@ -232,7 +238,7 @@ async def usage_aggregated(model: str = None, key: str = None, only: str = None,
             # 只统计有 key 的记录，忽略空 key
             if k and k.strip():
                 if k not in keys:
-                    keys[k] = {"ok": 0, "fail": 0, "models": {}}
+                    keys[k] = {"ok": 0, "fail": 0, "models": {}, "model_counts": {}}
                 if ok:
                     keys[k]["ok"] += 1
                 else:
@@ -243,6 +249,10 @@ async def usage_aggregated(model: str = None, key: str = None, only: str = None,
                     keys[k]["models"][mod]["ok"] += 1
                 else:
                     keys[k]["models"][mod]["fail"] += 1
+                # Add to model_counts (total calls per model for this key)
+                if mod not in keys[k]["model_counts"]:
+                    keys[k]["model_counts"][mod] = 0
+                keys[k]["model_counts"][mod] += 1
     if only == "success":
         for d in models.values():
             d["fail"] = 0
@@ -470,7 +480,7 @@ async def login(payload: Dict[str, Any]):
 @router.get("/rate-limits")
 async def rate_limits(token: str = Depends(authenticate)):
     """获取所有API Key的速率限制信息"""
-    rate_info = get_rate_limit_info()
+    rate_info = await get_rate_limit_info()
     
     # 获取配置的所有keys用于显示完整列表
     keys = await get_assembly_api_keys()

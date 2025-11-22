@@ -9,6 +9,7 @@ from log import log
 from .models import ChatCompletionRequest
 from .httpx_client import http_client
 from .usage_stats import record_successful_call
+from .storage_adapter import get_storage_adapter
 from config import (
     get_assembly_endpoint,
     get_assembly_api_keys,
@@ -36,6 +37,49 @@ def _sanitize_messages(messages) -> list:
 _rr_counter = itertools.count()
 _failed_keys = {}  # 记录失败的 Key 和失败时间
 _rate_limit_info = {}  # 记录每个 Key 的速率限制信息
+_rate_limit_loaded = False  # 标记是否已加载速率限制信息
+_load_lock = asyncio.Lock()  # 加载锁，防止并发加载
+
+async def _load_rate_limit_info():
+    """从存储中加载速率限制信息"""
+    global _rate_limit_info, _rate_limit_loaded
+    
+    # 使用锁防止并发加载
+    async with _load_lock:
+        if _rate_limit_loaded:
+            return
+        
+        try:
+            adapter = await get_storage_adapter()
+            data = await adapter.get_config("rate_limit_info")
+            if data and isinstance(data, dict):
+                # 转换字符串key为整数key
+                _rate_limit_info = {}
+                for k, v in data.items():
+                    try:
+                        idx = int(k)
+                        _rate_limit_info[idx] = v
+                    except (ValueError, TypeError):
+                        log.warning(f"Invalid rate limit key: {k}, skipping")
+                log.info(f"Loaded rate limit info for {len(_rate_limit_info)} keys from storage")
+            else:
+                log.info("No existing rate limit info found in storage")
+            _rate_limit_loaded = True
+        except Exception as e:
+            log.error(f"Failed to load rate limit info from storage: {e}")
+            # 即使失败也标记为已加载，使用内存数据继续运行
+            _rate_limit_loaded = True
+
+async def _save_rate_limit_info():
+    """保存速率限制信息到存储"""
+    try:
+        adapter = await get_storage_adapter()
+        # 转换整数key为字符串key以便JSON序列化
+        data_to_save = {str(k): v for k, v in _rate_limit_info.items()}
+        await adapter.set_config("rate_limit_info", data_to_save)
+        log.debug(f"Saved rate limit info for {len(_rate_limit_info)} keys")
+    except Exception as e:
+        log.error(f"Failed to save rate limit info: {e}")
 
 def _next_key_index(n: int) -> int:
     """
@@ -82,7 +126,7 @@ def _mask_key(key: str) -> str:
         return k[:2] + "***"
     return k[:4] + "..." + k[-4:]
 
-def _update_rate_limit_info(idx: int, api_key: str, headers: dict):
+async def _update_rate_limit_info(idx: int, api_key: str, headers: dict):
     """更新速率限制信息"""
     import time
     try:
@@ -127,12 +171,25 @@ def _update_rate_limit_info(idx: int, api_key: str, headers: dict):
                     pass
             
             log.debug(f"Updated rate limit info for key {masked_key}: limit={info.get('limit')}, remaining={info.get('remaining')}, reset_in={reset}s")
+            
+            # 异步保存到存储
+            asyncio.create_task(_save_rate_limit_info())
     except Exception as e:
         log.error(f"Failed to update rate limit info: {e}")
 
-def get_rate_limit_info() -> dict:
+async def initialize_rate_limit_system():
+    """初始化速率限制系统，在应用启动时调用"""
+    log.info("Initializing rate limit system...")
+    await _load_rate_limit_info()
+    log.info("Rate limit system initialized")
+
+async def get_rate_limit_info() -> dict:
     """获取所有key的速率限制信息"""
     import time
+    
+    # 确保数据已加载
+    await _load_rate_limit_info()
+    
     current_time = time.time()
     result = {}
     
@@ -298,7 +355,7 @@ async def send_assembly_request(
                 resp = await client.post(endpoint, content=post_data, headers=headers)
                 
                 # 更新速率限制信息
-                _update_rate_limit_info(idx, api_key, resp.headers)
+                await _update_rate_limit_info(idx, api_key, resp.headers)
                 
                 # 检查是否需要重试（429 或 400 速率限制错误）
                 should_retry = False

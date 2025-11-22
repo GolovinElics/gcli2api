@@ -28,6 +28,13 @@ async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     log.info("启动 AMB2API 主服务")
     
+    # 初始化速率限制系统
+    try:
+        from src.assembly_client import initialize_rate_limit_system
+        await initialize_rate_limit_system()
+    except Exception as e:
+        log.error(f"初始化速率限制系统时出错: {e}")
+    
     yield
     
     # 清理资源

@@ -2,8 +2,7 @@
 *.json
 *.toml
 *.md
-test_*.sh
-test_*.py
+test_*
 creds/
 
 # Environment configuration
