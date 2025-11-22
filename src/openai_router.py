@@ -51,6 +51,7 @@ async def chat_completions(
     # 获取原始请求数据
     try:
         raw_data = await request.json()
+        log.debug(f"Received chat completion request: {json.dumps(raw_data, ensure_ascii=False)[:500]}...")
     except Exception as e:
         log.error(f"Failed to parse JSON request: {e}")
         raise HTTPException(status_code=400, detail=f"Invalid JSON: {str(e)}")
@@ -58,6 +59,7 @@ async def chat_completions(
     # 创建请求对象
     try:
         request_data = ChatCompletionRequest(**raw_data)
+        log.debug(f"Request validated - model: {request_data.model}, messages: {len(request_data.messages)}, stream: {getattr(request_data, 'stream', False)}")
     except Exception as e:
         log.error(f"Request validation failed: {e}")
         raise HTTPException(status_code=400, detail=f"Request validation error: {str(e)}")
@@ -125,10 +127,13 @@ async def chat_completions(
         return await fake_stream_response_for_assembly(request_data)
     
     log.info(f"REQ model={model}")
+    log.debug(f"Sending request to AssemblyAI - stream: {is_streaming}, messages: {len(request_data.messages)}")
+    
     response = await send_assembly_request(request_data, False)
     
     # 如果是流式响应，直接返回
     if is_streaming:
+        log.debug(f"Converting to streaming response for model: {model}")
         return await convert_streaming_response(response, model)
     
     # 转换非流式响应（AssemblyAI → OpenAI）
@@ -206,11 +211,13 @@ async def chat_completions(
             pass
 
         log.info(f"RES model={model} status=OK")
+        log.debug(f"RES Details - Converted response: {json.dumps(openai_response, ensure_ascii=False)[:1000]}...")
         return JSONResponse(content=openai_response)
     except Exception as e:
         try:
             sample = (text[:200] + '...') if isinstance(text, str) and len(text) > 200 else text
             log.error(f"RES model={model} status=FAIL conversion_error sample={sample}")
+            log.debug(f"RES Details - Conversion error: {str(e)}, Full text: {text[:500]}...")
         except Exception:
             log.error(f"RES model={model} status=FAIL conversion_error")
         raise HTTPException(status_code=500, detail="Response conversion failed")
@@ -219,6 +226,8 @@ async def fake_stream_response_for_assembly(openai_request: ChatCompletionReques
     """AssemblyAI 的假流式：周期心跳 + 最终内容块"""
     async def stream_generator():
         try:
+            log.debug(f"Starting fake stream for model: {openai_request.model}")
+            
             # 发送心跳
             heartbeat = {
                 "choices": [{
@@ -228,6 +237,7 @@ async def fake_stream_response_for_assembly(openai_request: ChatCompletionReques
                 }]
             }
             yield f"data: {json.dumps(heartbeat)}\n\n".encode()
+            log.debug("Sent initial heartbeat")
             
             # 异步发送实际请求
             async def get_response():
@@ -238,13 +248,17 @@ async def fake_stream_response_for_assembly(openai_request: ChatCompletionReques
             
             try:
                 # 每3秒发送一次心跳，直到收到响应
+                heartbeat_count = 0
                 while not response_task.done():
                     await asyncio.sleep(3.0)
                     if not response_task.done():
+                        heartbeat_count += 1
                         yield f"data: {json.dumps(heartbeat)}\n\n".encode()
+                        log.debug(f"Sent heartbeat #{heartbeat_count}")
                 
                 # 获取响应结果
                 response = await response_task
+                log.debug(f"Received response after {heartbeat_count} heartbeats")
                 
             except asyncio.CancelledError:
                 # 取消任务并传播取消
@@ -277,6 +291,7 @@ async def fake_stream_response_for_assembly(openai_request: ChatCompletionReques
             
             try:
                 response_data = json.loads(body_str)
+                log.debug(f"Parsed response data: {json.dumps(response_data, ensure_ascii=False)[:500]}...")
 
                 # 从Gemini响应中提取内容，使用思维链分离逻辑
                 content = ""
@@ -288,6 +303,8 @@ async def fake_stream_response_for_assembly(openai_request: ChatCompletionReques
                 if not content and reasoning_content:
                     log.warning("Fake stream response contains only thinking content")
                     content = "[模型正在思考中，请稍后再试或重新提问]"
+                
+                log.debug(f"Extracted content length: {len(content)}")
                 
                 if content:
                     # 构建响应块，包括思维内容（如果有）

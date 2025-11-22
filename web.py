@@ -4,6 +4,10 @@ Main Web Integration - Integrates all routers and modules
 """
 import asyncio
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
 
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware

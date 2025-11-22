@@ -229,7 +229,8 @@ async def usage_aggregated(model: str = None, key: str = None, only: str = None,
                 models[mod]["ok"] += 1
             else:
                 models[mod]["fail"] += 1
-            if k:
+            # 只统计有 key 的记录，忽略空 key
+            if k and k.strip():
                 if k not in keys:
                     keys[k] = {"ok": 0, "fail": 0, "models": {}}
                 if ok:
@@ -364,7 +365,8 @@ async def usage_summary(model: str = None, key: str = None, only: str = None, li
             models[mod]["ok"] += 1
         else:
             models[mod]["fail"] += 1
-        if k:
+        # 只统计有 key 的记录，忽略空 key
+        if k and k.strip():
             if k not in keys:
                 keys[k] = {"ok": 0, "fail": 0, "models": {}}
             if ok:

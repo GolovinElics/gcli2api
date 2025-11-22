@@ -171,14 +171,36 @@ async def send_assembly_request(
                 idx = _next_key_index(len(keys))
                 api_key = keys[idx]
                 headers = {"Authorization": api_key, "Content-Type": "application/json"}
+                
+                # INFO 级别：简要日志
                 log.info(f"REQ model={openai_request.model} key={_mask_key(api_key)} attempt={attempt+1}")
+                
+                # DEBUG 级别：详细请求信息
+                log.debug(f"REQ Details - Endpoint: {endpoint}")
+                log.debug(f"REQ Details - Headers: {{'Authorization': '{_mask_key(api_key)}', 'Content-Type': 'application/json'}}")
+                log.debug(f"REQ Details - Payload: {post_data[:500]}{'...' if len(post_data) > 500 else ''}")
+                
                 resp = await client.post(endpoint, content=post_data, headers=headers)
+                
                 if resp.status_code == 429 and retry_enabled and attempt < max_retries:
                     log.warning(f"[RETRY] 429 from AssemblyAI, retrying ({attempt + 1}/{max_retries})")
                     await asyncio.sleep(retry_interval)
                     continue
+                
                 status_cat = "OK" if 200 <= resp.status_code < 400 else f"FAIL({resp.status_code})"
+                
+                # INFO 级别：简要响应
                 log.info(f"RES model={openai_request.model} key={_mask_key(api_key)} status={status_cat}")
+                
+                # DEBUG 级别：详细响应信息
+                log.debug(f"RES Details - Status Code: {resp.status_code}")
+                log.debug(f"RES Details - Headers: {dict(resp.headers)}")
+                try:
+                    response_text = resp.text if hasattr(resp, 'text') else str(resp.content)
+                    log.debug(f"RES Details - Body: {response_text[:1000]}{'...' if len(response_text) > 1000 else ''}")
+                except Exception as e:
+                    log.debug(f"RES Details - Body: [Unable to decode: {e}]")
+                
                 try:
                     if 200 <= resp.status_code < 400:
                         import hashlib

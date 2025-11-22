@@ -194,8 +194,26 @@ python web.py
 - `AUTO_BAN_ERROR_CODES`：触发封禁的错误码（默认：`401,403`）
 
 #### 日志配置
-- `LOG_LEVEL`：日志级别（默认：`info`）
+- `LOG_LEVEL`：日志级别
+  - `debug` - 详细日志，包含完整请求/响应报文（开发调试）
+  - `info` - 简要日志，只记录关键信息（默认，生产推荐）
+  - `warning` - 只记录警告和错误
+  - `error` - 只记录错误
 - `LOG_FILE`：日志文件路径（默认：`log.txt`）
+
+**日志级别对比：**
+```bash
+# DEBUG - 详细日志（开发调试）
+LOG_LEVEL=debug  # 包含完整请求/响应报文、详细处理流程
+
+# INFO - 简要日志（生产环境）
+LOG_LEVEL=info   # 只记录请求/响应状态、关键操作
+
+# WARNING - 只看警告
+LOG_LEVEL=warning  # 只记录警告和错误
+```
+
+详见 [日志使用指南](LOGGING_GUIDE.md)
 
 #### 其他配置
 - `PROXY`：HTTP 代理地址（可选）
