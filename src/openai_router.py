@@ -88,7 +88,7 @@ async def chat_completions(
     # 覆写 top_k 为 64
     setattr(request_data, "top_k", 64)
 
-    # 过滤空消息（但保留有 tool_calls 的消息）
+    # 过滤空消息（但保留有 tool_calls 的消息和 assistant/tool 消息）
     filtered_messages = []
     for m in request_data.messages:
         content = getattr(m, "content", None)
@@ -101,7 +101,13 @@ async def chat_completions(
             filtered_messages.append(m)
             continue
         
-        # 否则检查 content 是否有效
+        # 保留 assistant 和 tool 消息，即使 content 为空
+        # 这对于多轮对话很重要
+        if role in ["assistant", "tool"]:
+            filtered_messages.append(m)
+            continue
+        
+        # 对于其他角色，检查 content 是否有效
         if content:
             if isinstance(content, str) and content.strip():
                 filtered_messages.append(m)
