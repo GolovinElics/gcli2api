@@ -20,17 +20,67 @@ from config import (
 
 
 def _sanitize_messages(messages) -> list:
+    """
+    清理和标准化消息格式，确保符合 AssemblyAI 的要求
+    
+    处理：
+    1. 多模态内容（提取文本）
+    2. tool_calls（保留）
+    3. tool role（转换为 user role，移除 tool_call_id）
+    4. 空 content + tool_calls（保留，这是合法的）
+    
+    AssemblyAI 不支持 OpenAI 的 tool role 和 tool_call_id，
+    需要将 tool 消息转换为普通的 user 消息。
+    """
     sanitized = []
     for m in messages:
         role = getattr(m, "role", "user")
         content = getattr(m, "content", None)
+        
+        # 处理多模态内容
         if isinstance(content, list):
             parts_text = []
             for part in content:
                 if isinstance(part, dict) and part.get("type") == "text" and part.get("text"):
                     parts_text.append(part["text"])
             content = "\n".join(parts_text) if parts_text else ""
-        sanitized.append({"role": role, "content": content})
+        
+        # 确保 content 是字符串
+        if content is None:
+            content = ""
+        
+        # 处理 tool role：AssemblyAI 不支持，转换为 user
+        # 移除 tool_call_id，因为 AssemblyAI 不支持这个字段
+        is_tool_message = (role == "tool")
+        if is_tool_message:
+            log.debug(f"Converting tool message to user message: {content[:100]}...")
+            role = "user"
+        
+        # 构建消息
+        message = {"role": role, "content": content}
+        
+        # 保留 tool_calls（如果存在且不是 tool 消息）
+        if not is_tool_message:
+            tool_calls = getattr(m, "tool_calls", None)
+            if tool_calls:
+                # 确保 tool_calls 格式正确
+                if isinstance(tool_calls, list):
+                    formatted_calls = []
+                    for tc in tool_calls:
+                        if isinstance(tc, dict):
+                            formatted_calls.append(tc)
+                        elif hasattr(tc, "model_dump"):
+                            formatted_calls.append(tc.model_dump())
+                        elif hasattr(tc, "dict"):
+                            formatted_calls.append(tc.dict())
+                    message["tool_calls"] = formatted_calls
+                else:
+                    message["tool_calls"] = tool_calls
+        
+        # 不保留 tool_call_id，因为 AssemblyAI 不支持
+        
+        sanitized.append(message)
+    
     return sanitized
 
 
@@ -303,9 +353,20 @@ async def send_assembly_request(
     目前实现非流式调用；如需流式，建议结合假流式。
     """
     # 构造请求体
+    sanitized_messages = _sanitize_messages(openai_request.messages)
+    
+    # 详细日志：显示消息结构
+    log.debug(f"Message structure before sending to AssemblyAI:")
+    for i, msg in enumerate(sanitized_messages):
+        role = msg.get("role", "unknown")
+        content_preview = str(msg.get("content", ""))[:100]
+        has_tool_calls = "tool_calls" in msg
+        has_tool_call_id = "tool_call_id" in msg
+        log.debug(f"  [{i}] role={role}, content={content_preview}..., tool_calls={has_tool_calls}, tool_call_id={has_tool_call_id}")
+    
     payload: Dict[str, Any] = {
         "model": openai_request.model,
-        "messages": _sanitize_messages(openai_request.messages),
+        "messages": sanitized_messages,
     }
     # 透传常用参数
     for key in [
