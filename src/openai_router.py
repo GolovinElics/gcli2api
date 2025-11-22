@@ -79,10 +79,18 @@ async def chat_completions(
     # 覆写 top_k 为 64
     setattr(request_data, "top_k", 64)
 
-    # 过滤空消息
+    # 过滤空消息（但保留有 tool_calls 的消息）
     filtered_messages = []
     for m in request_data.messages:
         content = getattr(m, "content", None)
+        tool_calls = getattr(m, "tool_calls", None)
+        
+        # 如果有 tool_calls，即使 content 为空也保留
+        if tool_calls:
+            filtered_messages.append(m)
+            continue
+        
+        # 否则检查 content 是否有效
         if content:
             if isinstance(content, str) and content.strip():
                 filtered_messages.append(m)
