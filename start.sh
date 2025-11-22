@@ -2,6 +2,18 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+if [ -f ".env" ]; then
+  while IFS='=' read -r k v; do
+    case "$k" in ''|\#*) continue ;; esac
+    cur=$(printenv "$k" 2>/dev/null || true)
+    if [ -z "$cur" ]; then export "$k=$v"; fi
+  done < ./.env
+fi
+
+if [ -z "${REDIS_URI:-}" ]; then
+  export REDIS_URI="redis://localhost:6379/0"
+fi
+
 if [ ! -d ".venv" ]; then
   python3 -m venv .venv
 fi

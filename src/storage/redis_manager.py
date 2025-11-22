@@ -80,9 +80,9 @@ class RedisManager:
         self._connection_uri = None
         self._database_index = 0
         
-        # 哈希表设计 - 所有凭证存在一个哈希表中
-        self._credentials_hash_name = "gcli2api:credentials"
-        self._config_hash_name = "gcli2api:config"
+        prefix = os.getenv("REDIS_PREFIX", "AMB2API").strip(":")
+        self._credentials_hash_name = f"{prefix}:credentials"
+        self._config_hash_name = f"{prefix}:config"
         
         # 性能监控
         self._operation_count = 0

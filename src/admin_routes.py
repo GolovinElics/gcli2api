@@ -76,6 +76,18 @@ async def get_config(token: str = Depends(authenticate)):
     env_locked = [k for k in ["ASSEMBLY_API_KEYS","ASSEMBLY_API_KEY","USE_ASSEMBLY","API_PASSWORD","PANEL_PASSWORD","PORT","HOST"] if os.getenv(k)]
     return JSONResponse(content={"config": cfg, "env_locked": env_locked})
 
+@router.get("/config/all")
+async def get_all_config(token: str = Depends(authenticate)):
+    adapter = await get_storage_adapter()
+    cfg = await adapter.get_all_config()
+    backend = "file"
+    if os.getenv("REDIS_URI"):
+        backend = "redis"
+    elif os.getenv("POSTGRES_DSN"):
+        backend = "postgres"
+    prefix = os.getenv("REDIS_PREFIX", "AMB2API")
+    return JSONResponse(content={"backend": backend, "prefix": prefix, "config": cfg})
+
 
 @router.post("/config/save")
 async def save_config(payload: Dict[str, Any], token: str = Depends(authenticate)):
@@ -114,6 +126,8 @@ async def save_config(payload: Dict[str, Any], token: str = Depends(authenticate
         updates["api_password"] = payload.get("api_password")
     if payload.get("panel_password") is not None:
         updates["panel_password"] = payload.get("panel_password")
+    if payload.get("password") is not None:
+        updates["password"] = payload.get("password")
     if payload.get("port") is not None:
         updates["port"] = int(payload.get("port"))
     if payload.get("host") is not None:
@@ -347,3 +361,13 @@ async def logs_clear(token: str = Depends(authenticate)):
         return JSONResponse(content={"message": "日志已清空"})
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"清空失败: {e}")
+@router.post("/auth/login")
+async def login(payload: Dict[str, Any]):
+    password = str(payload.get("password", ""))
+    panel_pwd = await get_panel_password()
+    if password == panel_pwd:
+        return JSONResponse(content={"token": password})
+    api_pwd = await get_api_password()
+    if password == api_pwd:
+        return JSONResponse(content={"token": password})
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="密码错误")

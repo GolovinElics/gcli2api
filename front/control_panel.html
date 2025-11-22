@@ -705,13 +705,15 @@
             content: "🔒 环境变量锚定";
             position: absolute;
             right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
+            top: 8px;
+            transform: none;
             background-color: #ffc107;
             color: #212529;
             padding: 2px 6px;
             border-radius: 3px;
             font-size: 11px;
+            white-space: nowrap;
+            z-index: 2;
             pointer-events: none;
         }
 
@@ -926,6 +928,7 @@
             <input type="password" id="loginPassword" placeholder="输入密码" onkeypress="handlePasswordEnter(event)" />
             <br>
             <button class="btn" onclick="login()">登录</button>
+            <div id="loginStatus" style="margin-top:8px"></div>
         </div>
 
         <!-- 主界面 -->
@@ -1286,7 +1289,17 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                             </div>
                         </div>
 
-                        
+                        <div class="config-group">
+                            <h4>全部配置（只读）</h4>
+                            <div class="manage-actions">
+                                <button class="refresh-btn" onclick="refreshAllConfig()">刷新全部配置</button>
+                            </div>
+                            <div id="allConfigMeta" class="usage-info"></div>
+                            <div class="form-group">
+                                <table class="table" id="allConfigTable"></table>
+                            </div>
+                        </div>
+
 
                         <div class="config-group">
                             <h4>自动封禁配置</h4>
@@ -1502,31 +1515,44 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         };
 
         function showStatus(message, type = 'info') {
-            console.log('showStatus called:', message, type);
-            const statusSection = document.getElementById('statusSection');
-            if (statusSection) {
-                statusSection.innerHTML = `<div class="status ${type}">${message}</div>`;
+            const mainHidden = document.getElementById('mainSection')?.classList.contains('hidden');
+            const target = mainHidden ? document.getElementById('loginStatus') : document.getElementById('statusSection');
+            if (target) {
+                target.innerHTML = `<div class="status ${type}">${message}</div>`;
             } else {
-                console.error('statusSection not found');
-                alert(message); // 临时回退方案
+                alert(message);
             }
         }
 
         // 登录相关函数
         async function login() {
-            console.log('Login function called');
             const password = document.getElementById('loginPassword').value;
             if (!password) {
                 showStatus('请输入密码', 'error');
                 return;
             }
-            authToken = password;
-            document.getElementById('loginSection').classList.add('hidden');
-            document.getElementById('mainSection').classList.remove('hidden');
-            showStatus('登录成功', 'success');
-            switchTab('config');
-            await loadConfig();
-            await refreshUsageStats();
+            try {
+                const res = await fetch('/config/get', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${password}`
+                    }
+                });
+                if (res.ok) {
+                    authToken = password;
+                    document.getElementById('loginSection').classList.add('hidden');
+                    document.getElementById('mainSection').classList.remove('hidden');
+                    showStatus('登录成功', 'success');
+                    switchTab('config');
+                    await loadConfig();
+                    await refreshUsageStats();
+                } else {
+                    showStatus('密码错误', 'error');
+                }
+            } catch (error) {
+                showStatus(`网络错误: ${error.message}`, 'error');
+            }
         }
 
         function handlePasswordEnter(event) {
@@ -2603,6 +2629,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     envLockedFields = new Set(data.env_locked || []);
                     populateConfigForm();
                     configForm.classList.remove('hidden');
+                    refreshAllConfig();
                     showStatus('配置加载成功', 'success');
                 } else {
                     showStatus(`加载配置失败: ${data.detail || data.error || '未知错误'}`, 'error');
@@ -2658,14 +2685,15 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         function lockField(id, envName) {
             const el = document.getElementById(id);
             if (!el) return;
+            const group = el.closest('.form-group') || el.parentElement;
             const overrideEl = document.getElementById('overrideEnv');
             const overrideOn = overrideEl && overrideEl.checked;
             if (envLockedFields.has(envName) && !overrideOn) {
                 el.disabled = true;
-                el.classList.add('env-locked');
+                if (group) group.classList.add('env-locked');
             } else {
                 el.disabled = false;
-                el.classList.remove('env-locked');
+                if (group) group.classList.remove('env-locked');
             }
         }
 
@@ -2678,10 +2706,12 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 const configKey = fieldId.replace(/([A-Z])/g, '_$1').toLowerCase();
                 if (envLockedFields.has(configKey)) {
                     field.disabled = true;
-                    field.classList.add('env-locked');
+                    const group = field.closest('.form-group') || field.parentElement;
+                    if (group) group.classList.add('env-locked');
                 } else {
                     field.disabled = false;
-                    field.classList.remove('env-locked');
+                    const group = field.closest('.form-group') || field.parentElement;
+                    if (group) group.classList.remove('env-locked');
                 }
             }
         }
@@ -2696,17 +2726,64 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 host: document.getElementById('host').value.trim(),
                 port: parseInt(document.getElementById('port').value) || 7861
             };
+            const generalPwd = document.getElementById('configPassword').value.trim();
+            if (generalPwd) payload.password = generalPwd;
             try {
                 const response = await fetch('/config/save', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
                 const data = await response.json();
                 if (response.ok) {
-                    showStatus('配置保存成功', 'success');
-                    setTimeout(() => loadConfig(), 500);
+                    const passwordChanged = (
+                        (payload.panel_password && payload.panel_password !== (currentConfig.panel_password||'')) ||
+                        (payload.api_password && payload.api_password !== (currentConfig.api_password||'')) ||
+                        (payload.password && payload.password !== (currentConfig.password||''))
+                    );
+                    if (passwordChanged) {
+                        authToken = '';
+                        document.getElementById('mainSection').classList.add('hidden');
+                        document.getElementById('loginSection').classList.remove('hidden');
+                        document.getElementById('loginPassword').value = '';
+                        showStatus('密码已更新，请重新登录', 'info');
+                    } else {
+                        showStatus('配置保存成功', 'success');
+                        setTimeout(() => loadConfig(), 500);
+                    }
                 } else {
                     showStatus(`保存配置失败: ${data.detail || data.error || '未知错误'}`, 'error');
                 }
             } catch (error) {
                 showStatus(`网络错误: ${error.message}`, 'error');
+            }
+        }
+
+        async function refreshAllConfig(){
+            const metaEl = document.getElementById('allConfigMeta');
+            const tbl = document.getElementById('allConfigTable');
+            try{
+                const res = await fetch('/config/all', {headers: getAuthHeaders()});
+                const data = await res.json();
+                const cfg = data.config || {};
+                if (metaEl) metaEl.textContent = `后端: ${data.backend||'file'} · 前缀: ${data.prefix||''}`;
+                const catMap = {
+                    host: '服务器', port: '服务器',
+                    api_password: '密码', panel_password: '密码', password: '密码',
+                    proxy: '网络',
+                    assembly_api_keys: '上游', assembly_api_key: '上游', use_assembly: '上游',
+                    override_env: '面板',
+                    calls_per_rotation: '性能',
+                    retry_429_enabled: '重试', retry_429_max_retries: '重试', retry_429_interval: '重试',
+                    auto_ban_enabled: '封禁', auto_ban_error_codes: '封禁',
+                    credentials_dir: '存储'
+                };
+                const rows = Object.keys(cfg).sort().map(k=>{
+                    const v = cfg[k];
+                    const vs = typeof v === 'object' ? JSON.stringify(v) : String(v);
+                    const cat = catMap[k] || '其他';
+                    return `<tr><td style="width:120px;color:#666">${cat}</td><td style="width:220px;color:#555">${k}</td><td style="color:#222">${vs}</td></tr>`;
+                }).join('');
+                if (tbl) tbl.innerHTML = `<thead><tr><th>分类</th><th>键</th><th>值</th></tr></thead><tbody>${rows}</tbody>`;
+                showStatus('全部配置加载成功','success');
+            }catch(e){
+                showStatus(`加载全部配置失败: ${e.message}`,'error');
             }
         }
 

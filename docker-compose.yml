@@ -1,24 +1,31 @@
-version: '3.8'
-
 services:
-  gcli2api:
-    build:
-      context: .
-      args:
-        BASE_IMAGE: ${PYTHON_BASE_IMAGE:-python:3.12-slim}
-        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
-    image: gcli2api:local
-    container_name: gcli2api
+  amb2api:
+    platform: ${PLATFORM:-linux/amd64}
+    image: golovin0623/amb2api:latest
+    container_name: amb2api
     restart: unless-stopped
     ports:
-      - "7861:7861"
+      - "${PORT:-7861}:7861"
     environment:
-      - API_PASSWORD=pwd
-      - PANEL_PASSWORD=pwd
-      - HOST=0.0.0.0
-      - PORT=7861
-    volumes:
-      - ./data/creds:/app/creds
+      - REDIS_URI=${REDIS_URI}
+      - REDIS_PREFIX=${REDIS_PREFIX:-AMB2API}
+      - ASSEMBLY_API_KEYS=${ASSEMBLY_API_KEYS:-}
+      - API_PASSWORD=${API_PASSWORD:-pwd}
+      - PANEL_PASSWORD=${PANEL_PASSWORD:-pwd}
+      - HOST=${HOST:-0.0.0.0}
+      - PORT=${PORT:-7861}
+      - USE_ASSEMBLY=${USE_ASSEMBLY:-true}
+      - CONFIG_OVERRIDE_ENV=${CONFIG_OVERRIDE_ENV:-true}
+      - CALLS_PER_ROTATION=${CALLS_PER_ROTATION:-100}
+      - RETRY_429_ENABLED=${RETRY_429_ENABLED:-true}
+      - RETRY_429_MAX_RETRIES=${RETRY_429_MAX_RETRIES:-5}
+      - RETRY_429_INTERVAL=${RETRY_429_INTERVAL:-1}
+      - AUTO_BAN=${AUTO_BAN:-false}
+      - AUTO_BAN_ERROR_CODES=${AUTO_BAN_ERROR_CODES:-401,403}
+      - PROXY=${PROXY:-}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FILE=${LOG_FILE:-log.txt}
+      - POSTGRES_DSN=${POSTGRES_DSN:-}
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import sys, urllib.request, os; port = os.environ.get('PORT', '7861'); req = urllib.request.Request(f'http://localhost:{port}/v1/models', headers={'Authorization': 'Bearer ' + os.environ.get('API_PASSWORD', 'pwd')}); sys.exit(0 if urllib.request.urlopen(req, timeout=5).getcode() == 200 else 1)\""]
       interval: 30s
