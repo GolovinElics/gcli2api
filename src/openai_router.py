@@ -101,6 +101,15 @@ async def chat_completions(
     
     request_data.messages = filtered_messages
     
+    # 优化消息历史，避免超出 token 限制
+    from .message_optimizer import optimize_messages
+    try:
+        optimized_messages = optimize_messages(request_data.messages)
+        request_data.messages = optimized_messages
+        log.debug(f"Messages optimized: {len(filtered_messages)} -> {len(optimized_messages)}")
+    except Exception as e:
+        log.warning(f"Message optimization failed: {e}, using original messages")
+    
     # 处理模型名称和功能检测
     model = request_data.model
     use_fake_streaming = is_fake_streaming_model(model)

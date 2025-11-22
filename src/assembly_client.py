@@ -394,6 +394,13 @@ async def send_assembly_request(
                                 should_retry = True
                                 retry_reason = f"400 Rate Limit: {error_body.get('message', 'Unknown')}"
                                 _mark_key_failed(idx)
+                            # 检查是否是请求过大的错误（不标记 key 失败）
+                            elif any(keyword in error_msg for keyword in ["too large", "too long", "token", "context", "length", "processing error"]):
+                                log.warning(f"Request may be too large or invalid: {error_msg}")
+                                # 这是请求问题而非 key 问题，不标记失败
+                                # 但如果是最后一次尝试，就不重试了
+                                if attempt < max_retries - 1:
+                                    should_retry = False  # 不重试，直接返回错误让上层处理
                         except Exception:
                             pass
                 
