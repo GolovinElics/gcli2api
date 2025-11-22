@@ -60,6 +60,15 @@ async def chat_completions(
     try:
         request_data = ChatCompletionRequest(**raw_data)
         log.debug(f"Request validated - model: {request_data.model}, messages: {len(request_data.messages)}, stream: {getattr(request_data, 'stream', False)}")
+        
+        # 详细记录接收到的消息结构
+        log.debug(f"Received messages structure:")
+        for i, m in enumerate(request_data.messages):
+            role = getattr(m, "role", "unknown")
+            has_tool_calls = bool(getattr(m, "tool_calls", None))
+            has_tool_call_id = bool(getattr(m, "tool_call_id", None))
+            content_preview = str(getattr(m, "content", ""))[:50]
+            log.debug(f"  [{i}] role={role}, tool_calls={has_tool_calls}, tool_call_id={has_tool_call_id}, content={content_preview}...")
     except Exception as e:
         log.error(f"Request validation failed: {e}")
         raise HTTPException(status_code=400, detail=f"Request validation error: {str(e)}")
@@ -84,9 +93,11 @@ async def chat_completions(
     for m in request_data.messages:
         content = getattr(m, "content", None)
         tool_calls = getattr(m, "tool_calls", None)
+        role = getattr(m, "role", "unknown")
         
         # 如果有 tool_calls，即使 content 为空也保留
         if tool_calls:
+            log.debug(f"Keeping message with tool_calls: role={role}, content={'[empty]' if not content else content[:50]+'...'}")
             filtered_messages.append(m)
             continue
         
@@ -108,6 +119,48 @@ async def chat_completions(
                     filtered_messages.append(m)
     
     request_data.messages = filtered_messages
+    
+    log.debug(f"After filtering: {len(request_data.messages)} messages")
+    for i, m in enumerate(request_data.messages):
+        role = getattr(m, "role", "unknown")
+        has_tool_calls = bool(getattr(m, "tool_calls", None))
+        content_preview = str(getattr(m, "content", ""))[:50]
+        log.debug(f"  [{i}] role={role}, has_tool_calls={has_tool_calls}, content={content_preview}...")
+    
+    # 重建缺失的 assistant 消息（临时解决方案）
+    from .models import ChatCompletionRequest
+    rebuilt_messages = []
+    for i, msg in enumerate(request_data.messages):
+        role = getattr(msg, "role", "user")
+        
+        # 如果是 tool 消息，检查前一条是否是 assistant
+        if role == "tool":
+            tool_call_id = getattr(msg, "tool_call_id", None)
+            if not rebuilt_messages or getattr(rebuilt_messages[-1], "role", None) != "assistant":
+                # 缺少 assistant，创建占位符
+                log.warning(f"Detected missing assistant message before tool message, rebuilding...")
+                
+                # 创建一个简单的 assistant 消息对象
+                class AssistantMessage:
+                    def __init__(self, tool_call_id):
+                        self.role = "assistant"
+                        self.content = ""
+                        self.tool_calls = [{
+                            "id": tool_call_id or "unknown",
+                            "type": "function",
+                            "function": {
+                                "name": "search",  # 假设是搜索
+                                "arguments": "{}"
+                            }
+                        }]
+                
+                rebuilt_messages.append(AssistantMessage(tool_call_id))
+                log.debug(f"Rebuilt assistant message with tool_call_id: {tool_call_id}")
+        
+        rebuilt_messages.append(msg)
+    
+    request_data.messages = rebuilt_messages
+    log.debug(f"After rebuilding: {len(request_data.messages)} messages")
     
     # 优化消息历史，避免超出 token 限制
     from .message_optimizer import optimize_messages
