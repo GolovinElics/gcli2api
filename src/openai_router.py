@@ -325,7 +325,18 @@ async def fake_stream_response_for_assembly(openai_request: ChatCompletionReques
                     
                     # 添加 tool_calls（如果有）
                     if tool_calls:
-                        delta["tool_calls"] = tool_calls
+                        # 确保 arguments 是 JSON 字符串格式（OpenAI API 要求）
+                        formatted_tool_calls = []
+                        for tool_call in tool_calls:
+                            formatted_call = tool_call.copy()
+                            if "function" in formatted_call:
+                                function = formatted_call["function"].copy()
+                                # 如果 arguments 是对象，转换为 JSON 字符串
+                                if "arguments" in function and isinstance(function["arguments"], dict):
+                                    function["arguments"] = json.dumps(function["arguments"], ensure_ascii=False)
+                                formatted_call["function"] = function
+                            formatted_tool_calls.append(formatted_call)
+                        delta["tool_calls"] = formatted_tool_calls
 
                     # 转换usageMetadata为OpenAI格式
                     usage_raw = response_data.get("usage") or {}
