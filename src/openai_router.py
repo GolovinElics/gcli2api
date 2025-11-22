@@ -293,24 +293,39 @@ async def fake_stream_response_for_assembly(openai_request: ChatCompletionReques
                 response_data = json.loads(body_str)
                 log.debug(f"Parsed response data: {json.dumps(response_data, ensure_ascii=False)[:500]}...")
 
-                # 从Gemini响应中提取内容，使用思维链分离逻辑
+                # 从响应中提取内容和工具调用
                 content = ""
                 reasoning_content = ""
+                tool_calls = None
+                
                 if "choices" in response_data and response_data["choices"]:
-                    content = response_data["choices"][0].get("message", {}).get("content", "")
+                    message = response_data["choices"][0].get("message", {})
+                    content = message.get("content", "")
+                    tool_calls = message.get("tool_calls")
   
                 # 如果没有正常内容但有思维内容，给出警告
                 if not content and reasoning_content:
                     log.warning("Fake stream response contains only thinking content")
                     content = "[模型正在思考中，请稍后再试或重新提问]"
                 
-                log.debug(f"Extracted content length: {len(content)}")
+                log.debug(f"Extracted content length: {len(content)}, tool_calls: {bool(tool_calls)}")
                 
-                if content:
-                    # 构建响应块，包括思维内容（如果有）
-                    delta = {"role": "assistant", "content": content}
+                # 如果有内容或工具调用，都需要返回
+                if content or tool_calls:
+                    # 构建响应块，包括思维内容（如果有）和工具调用
+                    delta = {"role": "assistant"}
+                    
+                    # 添加 content（如果有）
+                    if content:
+                        delta["content"] = content
+                    
+                    # 添加 reasoning_content（如果有）
                     if reasoning_content:
                         delta["reasoning_content"] = reasoning_content
+                    
+                    # 添加 tool_calls（如果有）
+                    if tool_calls:
+                        delta["tool_calls"] = tool_calls
 
                     # 转换usageMetadata为OpenAI格式
                     usage_raw = response_data.get("usage") or {}
