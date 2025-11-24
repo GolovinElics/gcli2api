@@ -4339,6 +4339,11 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     let buf = '';
                     const outEl = document.getElementById('playgroundOutputContent');
                     const rawEl = document.getElementById('playgroundRawJson');
+                    
+                    // 清空之前的内容
+                    if (outEl) outEl.textContent = '';
+                    if (rawEl) rawEl.textContent = '';
+                    
                     let rawBuf = '';
                     let fullMessage = '';
                     let lastData = null;

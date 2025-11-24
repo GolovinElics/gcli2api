@@ -21,16 +21,18 @@ from config import (
 
 def _sanitize_messages(messages) -> list:
     """
-    清理和标准化消息格式，确保符合 AssemblyAI 的要求
+    清理和标准化消息格式，转换为 OpenAI 协议格式
+    
+    AssemblyAI LLM Gateway 支持完整的 OpenAI 协议，包括：
+    1. 所有角色类型（user、assistant、system、tool）
+    2. tool_calls 字段
+    3. tool_call_id 字段
     
     处理：
     1. 多模态内容（提取文本）
-    2. tool_calls（保留）
-    3. tool role（转换为 user role，移除 tool_call_id）
+    2. 保留所有角色类型
+    3. 保留 tool_calls 和 tool_call_id
     4. 空 content + tool_calls（保留，这是合法的）
-    
-    AssemblyAI 不支持 OpenAI 的 tool role 和 tool_call_id，
-    需要将 tool 消息转换为普通的 user 消息。
     """
     sanitized = []
     for m in messages:
@@ -45,39 +47,34 @@ def _sanitize_messages(messages) -> list:
                     parts_text.append(part["text"])
             content = "\n".join(parts_text) if parts_text else ""
         
-        # 确保 content 是字符串
+        # 确保 content 是字符串或 None（对于有 tool_calls 的消息）
         if content is None:
             content = ""
         
-        # 处理 tool role：AssemblyAI 不支持，转换为 user
-        # 移除 tool_call_id，因为 AssemblyAI 不支持这个字段
-        is_tool_message = (role == "tool")
-        if is_tool_message:
-            log.debug(f"Converting tool message to user message: {content[:100]}...")
-            role = "user"
-        
-        # 构建消息
+        # 构建消息 - 保留所有角色类型
         message = {"role": role, "content": content}
         
-        # 保留 tool_calls（如果存在且不是 tool 消息）
-        if not is_tool_message:
-            tool_calls = getattr(m, "tool_calls", None)
-            if tool_calls:
-                # 确保 tool_calls 格式正确
-                if isinstance(tool_calls, list):
-                    formatted_calls = []
-                    for tc in tool_calls:
-                        if isinstance(tc, dict):
-                            formatted_calls.append(tc)
-                        elif hasattr(tc, "model_dump"):
-                            formatted_calls.append(tc.model_dump())
-                        elif hasattr(tc, "dict"):
-                            formatted_calls.append(tc.dict())
-                    message["tool_calls"] = formatted_calls
-                else:
-                    message["tool_calls"] = tool_calls
+        # 保留 tool_calls（如果存在）
+        tool_calls = getattr(m, "tool_calls", None)
+        if tool_calls:
+            # 确保 tool_calls 格式正确
+            if isinstance(tool_calls, list):
+                formatted_calls = []
+                for tc in tool_calls:
+                    if isinstance(tc, dict):
+                        formatted_calls.append(tc)
+                    elif hasattr(tc, "model_dump"):
+                        formatted_calls.append(tc.model_dump())
+                    elif hasattr(tc, "dict"):
+                        formatted_calls.append(tc.dict())
+                message["tool_calls"] = formatted_calls
+            else:
+                message["tool_calls"] = tool_calls
         
-        # 不保留 tool_call_id，因为 AssemblyAI 不支持
+        # 保留 tool_call_id（对于 tool 角色的消息）
+        tool_call_id = getattr(m, "tool_call_id", None)
+        if tool_call_id:
+            message["tool_call_id"] = tool_call_id
         
         sanitized.append(message)
     

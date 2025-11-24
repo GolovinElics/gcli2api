@@ -510,3 +510,19 @@ async def get_use_assembly() -> bool:
     if env_value:
         return env_value.lower() in ("true", "1", "yes", "on")
     return bool(await get_config_value("use_assembly", True))
+
+async def get_enable_real_streaming() -> bool:
+    """
+    Get real streaming enabled setting.
+    
+    启用真实流式模式。默认为 False，使用假流式模式。
+    当 AssemblyAI 修复流式响应问题后，可以设置为 True 启用真实流式。
+    
+    Environment variable: ENABLE_REAL_STREAMING
+    TOML config key: enable_real_streaming
+    Default: False (use fake streaming)
+    """
+    env_value = os.getenv("ENABLE_REAL_STREAMING")
+    if env_value:
+        return env_value.lower() in ("true", "1", "yes", "on")
+    return bool(await get_config_value("enable_real_streaming", False))

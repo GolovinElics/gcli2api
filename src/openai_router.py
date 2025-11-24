@@ -18,7 +18,7 @@ from .anti_truncation import apply_anti_truncation_to_stream
 from .assembly_client import send_assembly_request
 from .models import ChatCompletionRequest, ModelList, Model
 from .task_manager import create_managed_task
-from .openai_transfer import assembly_response_to_openai, gemini_stream_chunk_to_openai, gemini_response_to_openai, _convert_usage_metadata
+from .openai_transfer import assembly_response_to_openai
 
 # 创建路由器
 router = APIRouter()
@@ -133,39 +133,7 @@ async def chat_completions(
         content_preview = str(getattr(m, "content", ""))[:50]
         log.debug(f"  [{i}] role={role}, has_tool_calls={has_tool_calls}, content={content_preview}...")
     
-    # 重建缺失的 assistant 消息（临时解决方案）
-    rebuilt_messages = []
-    for i, msg in enumerate(request_data.messages):
-        role = getattr(msg, "role", "user")
-        
-        # 如果是 tool 消息，检查前一条是否是 assistant
-        if role == "tool":
-            tool_call_id = getattr(msg, "tool_call_id", None)
-            if not rebuilt_messages or getattr(rebuilt_messages[-1], "role", None) != "assistant":
-                # 缺少 assistant，创建占位符
-                log.warning(f"Detected missing assistant message before tool message, rebuilding...")
-                
-                # 创建一个简单的 assistant 消息对象
-                class AssistantMessage:
-                    def __init__(self, tool_call_id):
-                        self.role = "assistant"
-                        self.content = ""
-                        self.tool_calls = [{
-                            "id": tool_call_id or "unknown",
-                            "type": "function",
-                            "function": {
-                                "name": "search",  # 假设是搜索
-                                "arguments": "{}"
-                            }
-                        }]
-                
-                rebuilt_messages.append(AssistantMessage(tool_call_id))
-                log.debug(f"Rebuilt assistant message with tool_call_id: {tool_call_id}")
-        
-        rebuilt_messages.append(msg)
-    
-    request_data.messages = rebuilt_messages
-    log.debug(f"After rebuilding: {len(request_data.messages)} messages")
+    # AssemblyAI 支持完整的 OpenAI 协议，不需要重建消息
     
     # 优化消息历史，避免超出 token 限制
     from .message_optimizer import optimize_messages
@@ -198,8 +166,19 @@ async def chat_completions(
     # 发送到 AssemblyAI（非流式）
     is_streaming = getattr(request_data, "stream", False)
     if is_streaming:
-        log.info("使用假流式模式")
-        return await fake_stream_response_for_assembly(request_data)
+        # 检查是否启用真实流式
+        from config import get_enable_real_streaming
+        enable_real_streaming = await get_enable_real_streaming()
+        
+        if enable_real_streaming:
+            log.info("使用真实流式模式（实验性）")
+            # 真实流式模式：直接发送流式请求到 AssemblyAI
+            # 注意：当前 AssemblyAI 的流式响应可能存在解析问题
+            response = await send_assembly_request(request_data, True)
+            return await convert_streaming_response(response, model)
+        else:
+            log.info("使用假流式模式")
+            return await fake_stream_response_for_assembly(request_data)
     
     log.info(f"REQ model={model}")
     log.debug(f"Sending request to AssemblyAI - stream: {is_streaming}, messages: {len(request_data.messages)}")
@@ -251,10 +230,17 @@ async def chat_completions(
                     parsed = None
 
         if isinstance(parsed, dict):
-            if 'candidates' in parsed:
-                openai_response = gemini_response_to_openai(parsed, model)
-            else:
-                openai_response = assembly_response_to_openai(parsed, model)
+            # 检查是否是错误响应
+            if 'code' in parsed and parsed.get('code') != 200:
+                error_message = parsed.get('message', 'Unknown error')
+                log.error(f"AssemblyAI returned error: {parsed.get('code')} - {error_message}")
+                raise HTTPException(
+                    status_code=parsed.get('code', 500),
+                    detail=f"AssemblyAI error: {error_message}"
+                )
+            
+            # AssemblyAI 返回 OpenAI 格式，直接使用或进行微调
+            openai_response = assembly_response_to_openai(parsed, model)
         else:
             openai_response = {
                 "id": str(uuid.uuid4()),

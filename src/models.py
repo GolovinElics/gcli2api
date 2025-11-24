@@ -19,6 +19,8 @@ class OpenAIChatMessage(BaseModel):
     content: Union[str, List[Dict[str, Any]], None] = None
     reasoning_content: Optional[str] = None
     name: Optional[str] = None
+    tool_calls: Optional[List[Dict[str, Any]]] = None
+    tool_call_id: Optional[str] = None
 
 class OpenAIChatCompletionRequest(BaseModel):
     model: str
