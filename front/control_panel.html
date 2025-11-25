@@ -6,23 +6,674 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AMB2API 管理面板</title>
     <style>
+        /* CSS 变量 - 亮色模式 */
+        :root {
+            --bg-color: #f5f5f5;
+            --container-bg: white;
+            --text-color: #333;
+            --text-secondary: #666;
+            --text-muted: #999;
+            --border-color: #e1e4e8;
+            --input-bg: white;
+            --input-border: #ddd;
+            --card-bg: #f8f9fa;
+            --hover-bg: #f1f5f9;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --tab-bg: #f8fafc;
+            --tab-active-bg: #ffffff;
+            --table-stripe: #fcfcfc;
+            --table-hover: #f8fbff;
+            --code-bg: #f0f8ff;
+            --modal-overlay: rgba(0, 0, 0, 0.5);
+        }
+
+        /* 暗黑模式 */
+        [data-theme="dark"] {
+            --bg-color: #1a1a2e;
+            --container-bg: #16213e;
+            --text-color: #e8e8e8;
+            --text-secondary: #a0a0a0;
+            --text-muted: #707070;
+            --border-color: #2d3748;
+            --input-bg: #1e2a47;
+            --input-border: #3d4f6f;
+            --card-bg: #1e2a47;
+            --hover-bg: #243b55;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --tab-bg: #1e2a47;
+            --tab-active-bg: #243b55;
+            --table-stripe: #1e2a47;
+            --table-hover: #243b55;
+            --code-bg: #1e2a47;
+            --modal-overlay: rgba(0, 0, 0, 0.7);
+        }
+
+        /* 暗黑模式下的额外样式覆盖 */
+        [data-theme="dark"] .config-input,
+        [data-theme="dark"] .filter-select,
+        [data-theme="dark"] input[type="text"],
+        [data-theme="dark"] input[type="number"],
+        [data-theme="dark"] input[type="password"],
+        [data-theme="dark"] textarea,
+        [data-theme="dark"] select {
+            background-color: var(--input-bg) !important;
+            color: var(--text-color) !important;
+            border-color: var(--input-border) !important;
+        }
+
+        [data-theme="dark"] .config-group {
+            background-color: var(--card-bg) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] .config-group h4 {
+            color: var(--text-color) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] .config-note {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-theme="dark"] .status-badge {
+            color: white !important;
+        }
+
+        [data-theme="dark"] .btn {
+            color: white;
+        }
+
+        [data-theme="dark"] .modal-content {
+            background-color: var(--container-bg) !important;
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .modal-header,
+        [data-theme="dark"] .modal-footer {
+            border-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] .modal-title {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .modal-close {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-theme="dark"] .modal-close:hover {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .key-stat-card {
+            background-color: var(--card-bg) !important;
+        }
+
+        [data-theme="dark"] .key-stat-badge {
+            background-color: var(--card-bg) !important;
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .pagination-btn {
+            background-color: var(--card-bg) !important;
+            color: var(--text-color) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] .pagination-btn:hover:not(:disabled) {
+            background-color: var(--hover-bg) !important;
+        }
+
+        [data-theme="dark"] .cred-card,
+        [data-theme="dark"] .rate-limit-card,
+        [data-theme="dark"] .usage-card {
+            background-color: var(--card-bg) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] .stat-item {
+            background: var(--card-bg) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] .stat-number,
+        [data-theme="dark"] .stat-label {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .upload-area {
+            background-color: var(--card-bg) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .credentials,
+        [data-theme="dark"] .cred-content {
+            background-color: var(--code-bg) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] code {
+            background-color: var(--code-bg) !important;
+            color: #9cdcfe !important;
+        }
+
+        [data-theme="dark"] .progress-bar {
+            background-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] h3, [data-theme="dark"] h4 {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] p {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-theme="dark"] small {
+            color: var(--text-muted) !important;
+        }
+
+        [data-theme="dark"] .login-form input[type="password"] {
+            background-color: var(--input-bg) !important;
+            color: var(--text-color) !important;
+            border-color: var(--input-border) !important;
+        }
+
+        /* 暗黑模式下弹窗内的按钮样式 */
+        [data-theme="dark"] .modal-content .btn {
+            color: white;
+        }
+
+        [data-theme="dark"] .modal-content .btn-sm {
+            color: white;
+        }
+
+        /* 暗黑模式下表格样式 */
+        [data-theme="dark"] .table {
+            color: var(--text-color);
+        }
+
+        [data-theme="dark"] .table thead th {
+            background-color: var(--card-bg) !important;
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .table tbody td {
+            color: var(--text-color) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] .table tbody tr {
+            background-color: var(--container-bg) !important;
+        }
+
+        [data-theme="dark"] .table tbody tr:nth-child(odd) {
+            background-color: var(--table-stripe) !important;
+        }
+
+        [data-theme="dark"] .table tbody tr:hover {
+            background-color: var(--table-hover) !important;
+        }
+
+        /* 暗黑模式下预览区域 */
+        [data-theme="dark"] #requestPreviewSection pre {
+            background-color: #1e1e1e !important;
+            color: #9cdcfe !important;
+        }
+
+        /* 暗黑模式下的 card 样式 */
+        [data-theme="dark"] .card {
+            background-color: var(--card-bg) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-color) !important;
+        }
+
+        /* 暗黑模式下的 status 样式 */
+        [data-theme="dark"] .status.info {
+            background-color: #1e3a5f !important;
+            border-color: #2d5a87 !important;
+            color: #7ec8e3 !important;
+        }
+
+        [data-theme="dark"] .status.success {
+            background-color: #1e4620 !important;
+            border-color: #2d6930 !important;
+            color: #7ec87e !important;
+        }
+
+        [data-theme="dark"] .status.error {
+            background-color: #4a1e1e !important;
+            border-color: #6b2d2d !important;
+            color: #e87e7e !important;
+        }
+
+        /* 暗黑模式下的 tabs 边框 */
+        [data-theme="dark"] .tabs {
+            border-color: var(--border-color) !important;
+        }
+
+        /* 暗黑模式下的 loading 文字 */
+        [data-theme="dark"] .loading {
+            color: var(--text-secondary) !important;
+        }
+
+        /* 暗黑模式下的 pre 和 code 元素 */
+        [data-theme="dark"] pre {
+            background-color: #1e1e1e !important;
+            color: #d4d4d4 !important;
+            border-color: var(--border-color) !important;
+        }
+
+        /* 暗黑模式下的弹窗内部元素 */
+        [data-theme="dark"] #keyManagementModal .modal-content {
+            background-color: var(--container-bg) !important;
+        }
+
+        [data-theme="dark"] #keyManagementModal .key-stat-card {
+            background-color: var(--card-bg) !important;
+        }
+
+        [data-theme="dark"] #keyManagementModal .key-stat-badge {
+            background-color: var(--card-bg) !important;
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] #keyManagementModal .filter-select {
+            background-color: var(--input-bg) !important;
+            color: var(--text-color) !important;
+            border-color: var(--input-border) !important;
+        }
+
+        [data-theme="dark"] #keyManagementModal .btn {
+            color: inherit;
+        }
+
+        [data-theme="dark"] #keyManagementModal .progress-bar {
+            background-color: var(--border-color) !important;
+        }
+
+        /* 暗黑模式下的 placeholder */
+        [data-theme="dark"] ::placeholder {
+            color: var(--text-muted) !important;
+            opacity: 1;
+        }
+
+        [data-theme="dark"] ::-webkit-input-placeholder {
+            color: var(--text-muted) !important;
+        }
+
+        [data-theme="dark"] ::-moz-placeholder {
+            color: var(--text-muted) !important;
+        }
+
+        /* 暗黑模式下的滚动条 */
+        [data-theme="dark"] ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        [data-theme="dark"] ::-webkit-scrollbar-track {
+            background: var(--card-bg);
+        }
+
+        [data-theme="dark"] ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* ========== 速率限制页面暗黑模式 ========== */
+        [data-theme="dark"] .rate-limit-card {
+            background-color: var(--card-bg) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .rate-limit-header {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .rate-limit-key {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .rate-limit-info-label {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-theme="dark"] .rate-limit-info-value {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .rate-limit-progress {
+            background-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] .rate-limit-reset {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-theme="dark"] #rateLimitList {
+            color: var(--text-color) !important;
+        }
+
+        /* ========== 使用统计页面暗黑模式 ========== */
+        [data-theme="dark"] .usage-card {
+            background-color: var(--card-bg) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .usage-header {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .usage-filename {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .usage-progress-label {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .usage-progress-bar {
+            background-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] .usage-info-item {
+            background-color: var(--card-bg) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .usage-info-label {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-theme="dark"] .usage-info-value {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .reset-time {
+            color: var(--text-muted) !important;
+        }
+
+        [data-theme="dark"] .ranking-container {
+            background-color: var(--card-bg) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .ranking-header {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .ranking-label {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .ranking-bar {
+            background-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] .ranking-count {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-theme="dark"] .legend {
+            color: var(--text-secondary) !important;
+        }
+
+        /* ========== 操练场页面暗黑模式 ========== */
+        [data-theme="dark"] #playgroundTab .config-group {
+            background-color: var(--card-bg) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] #playgroundMessages .form-group {
+            background-color: var(--card-bg) !important;
+        }
+
+        [data-theme="dark"] #playgroundOutputContent {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] #playgroundRawJson {
+            background-color: #1e1e1e !important;
+            color: #d4d4d4 !important;
+            border-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] .playground-btn {
+            color: white !important;
+        }
+
+        [data-theme="dark"] .playground-status .status {
+            background-color: var(--card-bg) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        /* ========== 实时日志页面暗黑模式 ========== */
+        [data-theme="dark"] #logsTab .config-group {
+            background-color: var(--card-bg) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] #logContainer {
+            background-color: #1e1e1e !important;
+            color: #d4d4d4 !important;
+            border-color: var(--border-color) !important;
+        }
+
+        /* ========== 通用元素暗黑模式 ========== */
+        [data-theme="dark"] div[style*="background:#f7f7f7"],
+        [data-theme="dark"] div[style*="background: #f7f7f7"],
+        [data-theme="dark"] div[style*="background-color:#f7f7f7"],
+        [data-theme="dark"] div[style*="background-color: #f7f7f7"] {
+            background-color: var(--card-bg) !important;
+        }
+
+        [data-theme="dark"] div[style*="background:#f0f0f0"],
+        [data-theme="dark"] div[style*="background: #f0f0f0"] {
+            background-color: var(--card-bg) !important;
+        }
+
+        [data-theme="dark"] div[style*="background:#ffffff"],
+        [data-theme="dark"] div[style*="background: #ffffff"],
+        [data-theme="dark"] div[style*="background:white"],
+        [data-theme="dark"] div[style*="background: white"],
+        [data-theme="dark"] div[style*="background-color:#ffffff"],
+        [data-theme="dark"] div[style*="background-color: #ffffff"],
+        [data-theme="dark"] div[style*="background-color:white"],
+        [data-theme="dark"] div[style*="background-color: white"] {
+            background-color: var(--card-bg) !important;
+        }
+
+        [data-theme="dark"] span[style*="background:#f0f0f0"],
+        [data-theme="dark"] span[style*="background: #f0f0f0"] {
+            background-color: var(--card-bg) !important;
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] button[style*="background:#f0f0f0"],
+        [data-theme="dark"] button[style*="background: #f0f0f0"] {
+            background-color: var(--card-bg) !important;
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] [style*="color:#333"],
+        [data-theme="dark"] [style*="color: #333"] {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] [style*="color:#666"],
+        [data-theme="dark"] [style*="color: #666"] {
+            color: var(--text-secondary) !important;
+        }
+
+        /* ========== 更多特定元素暗黑模式 ========== */
+        [data-theme="dark"] #playgroundResultMessage {
+            background-color: var(--card-bg) !important;
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] #playgroundResultKey,
+        [data-theme="dark"] #playgroundResultTokens,
+        [data-theme="dark"] #playgroundResultModel {
+            color: var(--text-color) !important;
+        }
+
+        [data-theme="dark"] .badge {
+            color: white !important;
+        }
+
+        [data-theme="dark"] #configMetaBar span {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-theme="dark"] #configMetaBar .badge {
+            color: white !important;
+        }
+
+        /* 速率限制卡片内的所有文字 */
+        [data-theme="dark"] #rateLimitTab * {
+            color: inherit;
+        }
+
+        [data-theme="dark"] #rateLimitTab {
+            color: var(--text-color);
+        }
+
+        /* 使用统计卡片内的所有文字 */
+        [data-theme="dark"] #usageTab * {
+            color: inherit;
+        }
+
+        [data-theme="dark"] #usageTab {
+            color: var(--text-color);
+        }
+
+        /* 操练场内的所有文字 */
+        [data-theme="dark"] #playgroundTab {
+            color: var(--text-color);
+        }
+
+        [data-theme="dark"] #playgroundTab label {
+            color: var(--text-secondary) !important;
+        }
+
+        /* 折叠区域标题 */
+        [data-theme="dark"] div[onclick*="toggleSection"] {
+            background-color: var(--card-bg) !important;
+            color: var(--text-color) !important;
+        }
+
+        /* 滑块样式 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid #4285f4;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid #4285f4;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        [data-theme="dark"] input[type="range"]::-webkit-slider-thumb {
+            background: var(--container-bg);
+            border-color: #4285f4;
+        }
+
+        [data-theme="dark"] input[type="range"]::-moz-range-thumb {
+            background: var(--container-bg);
+            border-color: #4285f4;
+        }
+
+        /* 暗黑模式切换按钮 */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            background: var(--container-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 50px;
+            padding: 8px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--text-color);
+            box-shadow: 0 2px 10px var(--shadow-color);
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px var(--shadow-color);
+        }
+
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+
+        .theme-toggle .icon {
+            font-size: 18px;
+            transition: transform 0.3s ease;
+        }
+
+        .theme-toggle:hover .icon {
+            transform: rotate(20deg);
+        }
+
         body {
             font-family: Arial, sans-serif;
             max-width: 1000px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f5f5f5;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         .container {
-            background-color: white;
+            background-color: var(--container-bg);
             padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 10px var(--shadow-color);
+            transition: background-color 0.3s ease;
         }
 
         h1 {
-            color: #333;
+            color: var(--text-color);
             text-align: center;
         }
 
@@ -34,19 +685,26 @@
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
-            color: #555;
+            color: var(--text-secondary);
+        }
+
+        input[type="text"], input[type="number"], input[type="password"], textarea, select {
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border: 2px solid var(--input-border);
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
         }
 
         input[type="text"] {
             width: 100%;
             padding: 10px;
-            border: 2px solid #ddd;
+            border: 2px solid var(--input-border);
             border-radius: 5px;
             font-size: 16px;
             box-sizing: border-box;
         }
 
-        input[type="text"]:focus {
+        input[type="text"]:focus, input[type="number"]:focus, input[type="password"]:focus, textarea:focus, select:focus {
             border-color: #4285f4;
             outline: none;
         }
@@ -171,20 +829,21 @@
             padding: 12px 24px;
             cursor: pointer;
             border: none;
-            background: #f8fafc;
+            background: var(--tab-bg);
             border-radius: 8px 8px 0 0;
             font-weight: 600;
             font-size: 16px;
-            color: #374151;
+            color: var(--text-secondary);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         .tab:hover {
-            background: #f1f5f9;
-            color: #1f2937;
+            background: var(--hover-bg);
+            color: var(--text-color);
         }
 
         .tab.active {
-            background: #ffffff;
+            background: var(--tab-active-bg);
             color: #2563eb;
             border-bottom: 2px solid #2563eb;
             box-shadow: inset 0 -2px 0 #2563eb;
@@ -647,18 +1306,19 @@
 
         /* 配置管理样式 */
         .config-group {
-            background-color: #f8f9fa;
-            border: 1px solid #e1e4e8;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 20px;
             margin: 15px 0;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
         }
 
         .config-group h4 {
             margin-top: 0;
             margin-bottom: 15px;
-            color: #333;
-            border-bottom: 1px solid #e1e4e8;
+            color: var(--text-color);
+            border-bottom: 1px solid var(--border-color);
             padding-bottom: 8px;
         }
 
@@ -848,10 +1508,10 @@
             margin-bottom: 2px;
         }
         .table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .table thead th { background: #f8f9fa; color: #333; text-align: left; padding: 8px; border-bottom: 1px solid #e9ecef; }
-        .table tbody td { padding: 8px; border-bottom: 1px solid #f1f3f5; color: #222; }
-        .table tbody tr:nth-child(odd) { background: #fcfcfc; }
-        .table tbody tr:hover { background: #f8fbff; }
+        .table thead th { background: var(--card-bg); color: var(--text-color); text-align: left; padding: 8px; border-bottom: 1px solid var(--border-color); transition: background-color 0.3s ease; }
+        .table tbody td { padding: 8px; border-bottom: 1px solid var(--border-color); color: var(--text-color); transition: color 0.3s ease; }
+        .table tbody tr:nth-child(odd) { background: var(--table-stripe); }
+        .table tbody tr:hover { background: var(--table-hover); }
         .ranking-container { background:#ffffff; border:1px solid #dee2e6; border-radius:8px; padding:12px; }
         .ranking-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; font-size:14px; }
         .ranking-list { display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; }
@@ -1048,16 +1708,18 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: var(--modal-overlay);
         }
 
         .modal-content {
-            background-color: #fefefe;
-            margin: 15% auto;
+            background-color: var(--container-bg);
+            margin: 5% auto;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 12px;
             width: 400px;
             max-width: 90%;
+            box-shadow: 0 10px 40px var(--shadow-color);
+            transition: background-color 0.3s ease;
         }
 
         .modal-header {
@@ -1157,6 +1819,12 @@
 </head>
 
 <body>
+    <!-- 暗黑模式切换按钮 -->
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换暗黑模式">
+        <span class="icon" id="themeIcon">🌙</span>
+        <span id="themeText">暗黑</span>
+    </button>
+
     <div class="container">
 
         <!-- 登录界面 -->
@@ -1180,6 +1848,7 @@
                 <button class="tab" onclick="switchTab('usage')">使用统计</button>
                 <button class="tab" onclick="switchTab('playground')">操练场</button>
                 <button class="tab" onclick="switchTab('logs')">实时日志</button>
+                <button class="tab" onclick="switchTab('account')">账户管理</button>
             </div>
 
 
@@ -1379,6 +2048,112 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 </div>
             </div>
 
+            <!-- 多密钥管理弹窗 -->
+            <div class="modal" id="keyManagementModal">
+                <div class="modal-content" style="width: 900px; max-width: 95%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
+                    <div class="modal-header" style="border-bottom: 1px solid var(--border-color, #e1e4e8); padding-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                            <h4 class="modal-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                                多密钥管理
+                                <span style="background: linear-gradient(135deg, #ff6b6b, #ee5a5a); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">⛩️ OpenAI</span>
+                            </h4>
+                            <span class="key-stat-badge" style="background: var(--card-bg, #f0f0f0); padding: 4px 10px; border-radius: 12px; font-size: 12px;">总密钥数: <span id="modalKeyTotal">0</span></span>
+                            <span class="key-stat-badge" style="background: var(--card-bg, #f0f0f0); padding: 4px 10px; border-radius: 12px; font-size: 12px;"><span id="modalAggregationMode">轮询模式</span></span>
+                        </div>
+                        <button class="modal-close" onclick="closeKeyManagementModal()" style="font-size: 24px; background: none; border: none; cursor: pointer;">&times;</button>
+                    </div>
+                    
+                    <!-- 统计卡片 -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 20px 0; border-bottom: 1px solid var(--border-color, #e1e4e8);">
+                        <div class="key-stat-card" style="background: var(--card-bg, #f8f9fa); border-radius: 12px; padding: 15px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <span style="width: 8px; height: 8px; background: #28a745; border-radius: 50%;"></span>
+                                <span style="color: var(--text-secondary, #666); font-size: 13px;">已启用</span>
+                            </div>
+                            <div style="font-size: 24px; font-weight: bold; color: #28a745;"><span id="modalKeyEnabled">0</span> / <span id="modalKeyTotal2">0</span></div>
+                            <div class="progress-bar" style="height: 4px; margin-top: 8px; background: #e9ecef; border-radius: 2px;">
+                                <div id="enabledProgressBar" style="height: 100%; background: #28a745; border-radius: 2px; width: 0%; transition: width 0.3s;"></div>
+                            </div>
+                        </div>
+                        <div class="key-stat-card" style="background: var(--card-bg, #f8f9fa); border-radius: 12px; padding: 15px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <span style="width: 8px; height: 8px; background: #dc3545; border-radius: 50%;"></span>
+                                <span style="color: var(--text-secondary, #666); font-size: 13px;">手动禁用</span>
+                            </div>
+                            <div style="font-size: 24px; font-weight: bold; color: #dc3545;"><span id="modalKeyManualDisabled">0</span> / <span id="modalKeyTotal3">0</span></div>
+                            <div class="progress-bar" style="height: 4px; margin-top: 8px; background: #e9ecef; border-radius: 2px;">
+                                <div id="manualDisabledProgressBar" style="height: 100%; background: #dc3545; border-radius: 2px; width: 0%; transition: width 0.3s;"></div>
+                            </div>
+                        </div>
+                        <div class="key-stat-card" style="background: var(--card-bg, #f8f9fa); border-radius: 12px; padding: 15px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <span style="width: 8px; height: 8px; background: #ffc107; border-radius: 50%;"></span>
+                                <span style="color: var(--text-secondary, #666); font-size: 13px;">自动禁用</span>
+                            </div>
+                            <div style="font-size: 24px; font-weight: bold; color: #ffc107;"><span id="modalKeyAutoDisabled">0</span> / <span id="modalKeyTotal4">0</span></div>
+                            <div class="progress-bar" style="height: 4px; margin-top: 8px; background: #e9ecef; border-radius: 2px;">
+                                <div id="autoDisabledProgressBar" style="height: 100%; background: #ffc107; border-radius: 2px; width: 0%; transition: width 0.3s;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 工具栏 -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 0; flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <select id="modalKeyStatusFilter" class="filter-select" onchange="loadKeyManagementModal()" style="padding: 6px 12px; border-radius: 6px;">
+                                <option value="all">全部状态</option>
+                                <option value="enabled">已启用</option>
+                                <option value="disabled">已禁用</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-sm" onclick="loadKeyManagementModal()" style="background: #f0f0f0; color: #333; border: none;">刷新</button>
+                            <button class="btn btn-sm" onclick="enableAllKeys()" style="background: transparent; color: #4285f4; border: 1px solid #4285f4;">启用全部</button>
+                            <button class="btn btn-sm" onclick="disableAllKeys()" style="background: transparent; color: #dc3545; border: 1px solid #dc3545;">禁用全部</button>
+                            <button class="btn btn-sm" onclick="deleteAutoDisabledKeys()" style="background: transparent; color: #ffc107; border: 1px solid #ffc107;">删除自动禁用密钥</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 密钥表格 -->
+                    <div style="flex: 1; overflow-y: auto;">
+                        <table class="table" style="width: 100%;">
+                            <thead style="position: sticky; top: 0; background: var(--container-bg, white); z-index: 1;">
+                                <tr>
+                                    <th style="width: 60px;">索引</th>
+                                    <th style="min-width: 300px;">密钥</th>
+                                    <th style="width: 80px;">状态</th>
+                                    <th>禁用原因</th>
+                                    <th>禁用时间</th>
+                                    <th style="width: 80px; text-align: right;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="keyManagementTableBody">
+                                <tr><td colspan="6" style="text-align: center; padding: 40px;">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 分页 -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-top: 1px solid var(--border-color, #e1e4e8); flex-wrap: wrap; gap: 10px;">
+                        <span style="color: var(--text-secondary, #666); font-size: 13px;">显示第 <span id="keyPageStart">1</span> 条-第 <span id="keyPageEnd">10</span> 条，共 <span id="keyPageTotal">0</span> 条</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button class="pagination-btn" id="keyPrevPage" onclick="changeKeyPage(-1)">&lt;</button>
+                            <span id="keyCurrentPage" style="padding: 6px 12px; background: #4285f4; color: white; border-radius: 4px;">1</span>
+                            <button class="pagination-btn" id="keyNextPage" onclick="changeKeyPage(1)">&gt;</button>
+                            <span style="margin-left: 10px;">每页条数:</span>
+                            <select id="keyPageSize" class="filter-select" onchange="loadKeyManagementModal()" style="padding: 4px 8px;">
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                            </select>
+                            <span style="margin-left: 10px;">跳至</span>
+                            <input type="number" id="keyJumpPage" style="width: 50px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;" min="1" onchange="jumpToKeyPage()">
+                            <span>页</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 速率限制标签页 -->
             <div id="ratelimitTab" class="tab-content">
                 <h3>API Key 速率限制监控</h3>
@@ -1477,11 +2252,31 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     <div class="loading" id="configLoading">正在加载配置...</div>
                     <div id="configForm" class="hidden">
                         <div class="config-group">
-                            <h4>AssemblyAI 配置</h4>
+                            <h4>密钥配置</h4>
                             <div class="form-group">
-                                <label for="assemblyApiKeys">ASSEMBLY_API_KEYS</label>
-                                <textarea id="assemblyApiKeys" class="config-input" placeholder="每行一个 AssemblyAI API Key" style="min-height: 100px"></textarea>
-                                <small class="config-note">支持多个密钥，按行分隔；也可用逗号分隔</small>
+                                <label for="assemblyApiKeys">密钥</label>
+                                <textarea id="assemblyApiKeys" class="config-input" placeholder="请输入密钥，一行一个" style="min-height: 100px; border: 2px solid #4285f4; border-radius: 8px;"></textarea>
+                                <div style="display: flex; align-items: center; gap: 15px; margin-top: 8px; flex-wrap: wrap;">
+                                    <small class="config-note" style="color: #4285f4; margin: 0;">追加模式：新密钥将添加到现有密钥列表的末尾</small>
+                                    <button class="btn btn-sm" onclick="showKeyManagementModal()" style="background: transparent; color: #4285f4; border: 1px solid #4285f4; padding: 4px 12px;">查看密钥</button>
+                                    <label style="display: flex; align-items: center; gap: 5px; margin: 0;">
+                                        <input type="checkbox" id="keyAggregationEnabled" class="config-checkbox" checked /> 密钥聚合模式
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="keyUpdateMode">密钥更新模式</label>
+                                <select id="keyUpdateMode" class="config-input" style="background: #f5f5f5;">
+                                    <option value="append">追加模式：将新密钥添加到现有密钥列表末尾</option>
+                                    <option value="override">覆盖模式：用新密钥替换所有现有密钥</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="keyAggregationMode">密钥聚合模式</label>
+                                <select id="keyAggregationMode" class="config-input" style="background: #f5f5f5;">
+                                    <option value="round_robin">轮询</option>
+                                    <option value="random">随机</option>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label>
@@ -1685,7 +2480,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:16px">
                             <div>
                                 <label for="playgroundModel">模型</label>
-                                <select id="playgroundModel" class="config-input" style="width:100%"></select>
+                                <select id="playgroundModel" class="config-input" style="width:100%" onchange="updateMaxTokensLimit(this.value)"></select>
                             </div>
                             <div>
                                 <label for="playgroundApiKey">API Key（可选）</label>
@@ -1696,28 +2491,37 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                             </div>
                         </div>
                         
-                        <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px">
-                            <div>
-                                <label for="playgroundTemperature">temperature</label>
-                                <input type="number" id="playgroundTemperature" class="config-input" step="0.1" min="0" max="2" value="0.5" style="width:120px" />
+                        <!-- Temperature 滑块 -->
+                        <div style="margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <label for="playgroundTemperature" style="color: var(--text-secondary); font-size: 14px;">Temperature ⓘ</label>
+                                <input type="number" id="playgroundTemperatureValue" class="config-input" step="0.1" min="0" max="2" value="0.5" style="width: 80px; padding: 6px; text-align: center; border-radius: 8px;" onchange="updateTemperatureSlider(this.value)" />
                             </div>
-                            <div>
-                                <label for="playgroundMaxTokens">max_tokens</label>
-                                <input type="number" id="playgroundMaxTokens" class="config-input" min="1" max="128000" value="4096" style="width:140px" />
+                            <input type="range" id="playgroundTemperature" min="0" max="2" step="0.1" value="0.5" style="width: 100%; height: 6px; border-radius: 3px; background: linear-gradient(to right, #4285f4 0%, #4285f4 25%, #e0e0e0 25%, #e0e0e0 100%); outline: none; -webkit-appearance: none;" oninput="updateTemperatureValue(this.value)" />
+                        </div>
+
+                        <!-- Max Tokens 滑块 -->
+                        <div style="margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <label for="playgroundMaxTokens" style="color: var(--text-secondary); font-size: 14px;">Max Tokens ⓘ</label>
+                                <input type="number" id="playgroundMaxTokensValue" class="config-input" min="1" max="128000" value="4096" style="width: 100px; padding: 6px; text-align: center; border-radius: 8px;" onchange="updateMaxTokensSlider(this.value)" />
                             </div>
-                            <div class="toggle-wrap">
-                                <span>stream</span>
-                                <label class="switch">
-                                    <input type="checkbox" id="playgroundStream" />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
+                            <input type="range" id="playgroundMaxTokens" min="1" max="128000" step="1" value="4096" style="width: 100%; height: 6px; border-radius: 3px; background: linear-gradient(to right, #4285f4 0%, #4285f4 3%, #e0e0e0 3%, #e0e0e0 100%); outline: none; -webkit-appearance: none;" oninput="updateMaxTokensValue(this.value)" />
+                        </div>
+
+                        <!-- Stream 开关 -->
+                        <div class="toggle-wrap" style="margin-bottom: 20px;">
+                            <span>stream</span>
+                            <label class="switch">
+                                <input type="checkbox" id="playgroundStream" />
+                                <span class="slider"></span>
+                            </label>
                         </div>
                         
                         <!-- 操作按钮 - 一排居中 -->
                         <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap">
-                            <button class="playground-btn playground-btn-add" onclick="addMessageRow()">添加消息</button>
-                            <button class="playground-btn playground-btn-clear" onclick="clearMessages()">清空消息</button>
+                            <button class="playground-btn playground-btn-add" onclick="addMessageRow()">添加参数</button>
+                            <button class="playground-btn playground-btn-clear" onclick="clearMessages()">清空参数</button>
                             <button class="playground-btn playground-btn-send" onclick="sendPlayground()">发送测试</button>
                         </div>
                     </div>
@@ -1743,6 +2547,38 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         </div>
                     </div>
                 </div>
+                <!-- 请求预览区域（支持折叠） -->
+                <div class="config-group" id="requestPreviewSection" style="display: none;">
+                    <div onclick="toggleSection('requestPreviewWrap')" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; padding:6px 8px; background:var(--card-bg); border-radius:6px">
+                        <span>📋 请求预览</span>
+                        <span id="requestPreviewToggle">▼</span>
+                    </div>
+                    <div id="requestPreviewWrap" style="margin-top:12px; display:block">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <label style="font-size: 12px; color: var(--text-secondary);">请求方法 & URL</label>
+                                <div style="background: var(--card-bg); padding: 10px; border-radius: 6px; font-family: monospace; font-size: 12px;">
+                                    <span id="previewMethod" style="color: #28a745; font-weight: bold;">POST</span>
+                                    <span id="previewUrl" style="color: var(--text-color); margin-left: 10px;"></span>
+                                </div>
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: var(--text-secondary);">请求头</label>
+                                <pre id="previewHeaders" style="background: var(--card-bg); padding: 10px; border-radius: 6px; font-family: monospace; font-size: 11px; margin: 0; max-height: 80px; overflow: auto;"></pre>
+                            </div>
+                        </div>
+                        <div style="margin-top: 15px;">
+                            <label style="font-size: 12px; color: var(--text-secondary);">请求体 (JSON)</label>
+                            <textarea id="previewBody" style="width: 100%; background: #1e1e1e; color: #9cdcfe; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 11px; margin: 0; min-height: 200px; border: 1px solid var(--border-color); resize: vertical;"></textarea>
+                        </div>
+                        <div style="margin-top: 10px; display: flex; gap: 8px; justify-content: flex-end;">
+                            <button class="btn btn-sm" onclick="copyRequestBody()" style="background: #6c757d;">复制请求体</button>
+                            <button class="btn btn-sm" onclick="editRequestBody()" style="background: #17a2b8;">编辑请求体</button>
+                            <button class="btn btn-sm" onclick="sendCustomRequest()" style="background: #28a745;">发送</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="config-group">
                     <h4>结果</h4>
                     <div class="form-group" style="display:flex; gap:12px; flex-wrap:wrap; align-items:stretch">
@@ -1755,6 +2591,124 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         <label>原始响应</label>
                         <pre id="playgroundRawJson" style="background-color:#1e1e1e; color:#ffffff; font-family:'Courier New', monospace; font-size:12px; height:320px; overflow-y:auto; border:1px solid #333; border-radius:5px; padding:12px; white-space:pre-wrap; word-break:break-all"></pre>
                     </div>
+                </div>
+            </div>
+
+            <!-- 账户管理标签页 -->
+            <div id="accountTab" class="tab-content">
+                <h3>账户管理</h3>
+                <div id="accountStatus"></div>
+                
+                <!-- 登录区域 -->
+                <div id="accountLoginSection">
+                    <div class="config-group">
+                        <h4>登录 AssemblyAI Dashboard</h4>
+                        <p style="color: var(--text-secondary); margin-bottom: 16px;">使用你的 AssemblyAI 账户邮箱和密码登录，查看账户余额、使用量和成本。</p>
+                        
+                        <!-- 邮箱密码登录 -->
+                        <div class="form-group">
+                            <label for="accountEmail">邮箱</label>
+                            <input type="text" id="accountEmail" class="config-input" placeholder="your@email.com" />
+                        </div>
+                        <div class="form-group">
+                            <label for="accountPassword">密码</label>
+                            <input type="password" id="accountPassword" class="config-input" placeholder="输入密码" onkeypress="if(event.key==='Enter')accountLogin()" />
+                        </div>
+                        <button class="btn" onclick="accountLogin()">登录</button>
+                        <small class="config-note" style="display: block; margin-top: 12px;">
+                            <a href="https://www.assemblyai.com/dashboard/signup" target="_blank">没有账户？注册 AssemblyAI</a>
+                        </small>
+                    </div>
+                </div>
+
+                <!-- 已登录区域 -->
+                <div id="accountLoggedInSection" class="hidden">
+                    <!-- 子标签页导航 -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <button class="btn btn-sm" id="accountSubTabOverview" onclick="switchAccountSubTab('overview')" style="background: #4285f4;">概览</button>
+                        <button class="btn btn-sm" id="accountSubTabUsage" onclick="switchAccountSubTab('usage')" style="background: #6c757d;">使用量</button>
+                        <button class="btn btn-sm" id="accountSubTabCost" onclick="switchAccountSubTab('cost')" style="background: #6c757d;">成本</button>
+                        <button class="btn btn-sm" id="accountSubTabRates" onclick="switchAccountSubTab('rates')" style="background: #6c757d;">费率</button>
+                        <button class="btn btn-sm" onclick="accountLogout()" style="background: #dc3545; margin-left: auto;">登出</button>
+                    </div>
+
+                    <!-- 概览子页面 -->
+                    <div id="accountSubOverview">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                            <!-- 账户信息卡片 -->
+                            <div class="config-group">
+                                <h4>账户信息</h4>
+                                <div id="accountInfoContent">
+                                    <div class="loading">加载中...</div>
+                                </div>
+                            </div>
+                            <!-- 余额卡片 -->
+                            <div class="config-group">
+                                <h4>余额</h4>
+                                <div id="accountBalanceContent">
+                                    <div class="loading">加载中...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 使用量子页面 -->
+                    <div id="accountSubUsage" class="hidden">
+                        <div class="config-group">
+                            <h4>使用量统计</h4>
+                            <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                                <select id="accountUsageWindow" class="config-input" style="width: auto;" onchange="loadAccountUsage()">
+                                    <option value="week">最近 7 天</option>
+                                    <option value="month" selected>最近 30 天</option>
+                                </select>
+                                <button class="btn btn-sm" onclick="loadAccountUsage()">刷新</button>
+                            </div>
+                            <div id="accountUsageContent">
+                                <div class="loading">加载中...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 成本子页面 -->
+                    <div id="accountSubCost" class="hidden">
+                        <div class="config-group">
+                            <h4>成本分析</h4>
+                            <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                                <select id="accountCostWindow" class="config-input" style="width: auto;" onchange="loadAccountCost()">
+                                    <option value="week">最近 7 天</option>
+                                    <option value="month" selected>最近 30 天</option>
+                                </select>
+                                <select id="accountCostGroupBy" class="config-input" style="width: auto;" onchange="loadAccountCost()">
+                                    <option value="model" selected>按模型</option>
+                                    <option value="date">按日期</option>
+                                </select>
+                                <button class="btn btn-sm" onclick="loadAccountCost()">刷新</button>
+                                <button class="btn btn-sm" onclick="exportAccountCost('json')" style="background: #17a2b8;">导出 JSON</button>
+                                <button class="btn btn-sm" onclick="exportAccountCost('csv')" style="background: #17a2b8;">导出 CSV</button>
+                            </div>
+                            <div id="accountCostContent">
+                                <div class="loading">加载中...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 费率子页面 -->
+                    <div id="accountSubRates" class="hidden">
+                        <div class="config-group">
+                            <h4>费率信息</h4>
+                            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                                <select id="accountRatesRegion" class="config-input" style="width: auto;" onchange="loadAccountRates()">
+                                    <option value="US" selected>US</option>
+                                    <option value="Europe">Europe</option>
+                                </select>
+                                <button class="btn btn-sm" onclick="loadAccountRates()">刷新</button>
+                            </div>
+                            <div id="accountRatesContent">
+                                <div class="loading">加载中...</div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -1795,7 +2749,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             <div class="modal-body">
                 <div class="form-group">
                     <label>返回消息:</label>
-                    <div id="playgroundResultMessage" style="background: #f8f9fa; padding: 12px; border-radius: 6px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;"></div>
+                    <div id="playgroundResultMessage" style="background: var(--card-bg, #f8f9fa); padding: 12px; border-radius: 6px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; color: var(--text-color, #333);"></div>
                 </div>
                 <div class="form-group">
                     <label>使用的 Key:</label>
@@ -1820,6 +2774,36 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         let credsData = {};
         let selectedModels = [];
         let queriedModels = { grouped: { Anthropic: [], OpenAI: [], Google: [], Other: [] }, models: [] };
+
+        // ==================== 暗黑模式 ====================
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeButton(newTheme);
+        }
+
+        function updateThemeButton(theme) {
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            if (theme === 'dark') {
+                icon.textContent = '☀️';
+                text.textContent = '亮色';
+            } else {
+                icon.textContent = '🌙';
+                text.textContent = '暗黑';
+            }
+        }
+
+        // 初始化主题
+        (function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            // 延迟更新按钮，确保 DOM 已加载
+            setTimeout(() => updateThemeButton(savedTheme), 0);
+        })();
 
         // 分页和筛选相关变量
         let filteredCredsData = {};
@@ -1925,9 +2909,241 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             if (tabName === 'ratelimit') {
                 loadRateLimits();
             }
+            if (tabName === 'account') {
+                initAccountTab();
+            }
         }
 
-        // 速率限制相关函数
+        // ==================== 密钥管理相关函数（弹窗版） ====================
+        let keyManagementData = { keys: [], total: 0, active: 0, disabled: 0 };
+        let keyCurrentPage = 1;
+        let keyPageSize = 10;
+
+        // 显示密钥管理弹窗
+        function showKeyManagementModal() {
+            document.getElementById('keyManagementModal').style.display = 'block';
+            loadKeyManagementModal();
+        }
+
+        // 关闭密钥管理弹窗
+        function closeKeyManagementModal() {
+            document.getElementById('keyManagementModal').style.display = 'none';
+        }
+
+        // 加载密钥管理数据（弹窗版）
+        async function loadKeyManagementModal() {
+            const tbody = document.getElementById('keyManagementTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px;">加载中...</td></tr>';
+            
+            try {
+                const statusFilter = document.getElementById('modalKeyStatusFilter')?.value || 'all';
+                keyPageSize = parseInt(document.getElementById('keyPageSize')?.value || '10');
+                
+                // 获取密钥列表
+                let url = '/api/keys?';
+                const params = new URLSearchParams();
+                if (statusFilter !== 'all') params.append('status_filter', statusFilter);
+                params.append('sort_by', 'index');
+                params.append('sort_order', 'asc');
+                url += params.toString();
+                
+                const response = await fetch(url, { headers: getAuthHeaders() });
+                const data = await response.json();
+                keyManagementData = data;
+                
+                // 获取配置信息（聚合模式）
+                try {
+                    const configResponse = await fetch('/api/keys/config', { headers: getAuthHeaders() });
+                    if (configResponse.ok) {
+                        const configData = await configResponse.json();
+                        const modeText = configData.aggregation_mode === 'random' ? '随机模式' : '轮询模式';
+                        document.getElementById('modalAggregationMode').textContent = modeText;
+                    }
+                } catch (e) {
+                    console.error('Failed to load key config:', e);
+                }
+                
+                // 更新统计信息
+                const total = data.total || 0;
+                const enabled = data.active || 0;
+                const manualDisabled = data.disabled || 0;
+                const autoDisabled = 0; // 暂时设为0，后续可以从API获取
+                
+                document.getElementById('modalKeyTotal').textContent = total;
+                document.getElementById('modalKeyTotal2').textContent = total;
+                document.getElementById('modalKeyTotal3').textContent = total;
+                document.getElementById('modalKeyTotal4').textContent = total;
+                document.getElementById('modalKeyEnabled').textContent = enabled;
+                document.getElementById('modalKeyManualDisabled').textContent = manualDisabled;
+                document.getElementById('modalKeyAutoDisabled').textContent = autoDisabled;
+                
+                // 更新进度条
+                const enabledPercent = total > 0 ? (enabled / total * 100) : 0;
+                const manualPercent = total > 0 ? (manualDisabled / total * 100) : 0;
+                const autoPercent = total > 0 ? (autoDisabled / total * 100) : 0;
+                document.getElementById('enabledProgressBar').style.width = enabledPercent + '%';
+                document.getElementById('manualDisabledProgressBar').style.width = manualPercent + '%';
+                document.getElementById('autoDisabledProgressBar').style.width = autoPercent + '%';
+                
+                // 渲染表格
+                renderKeyManagementTable(data.keys);
+            } catch (error) {
+                console.error('Failed to load key management:', error);
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #dc3545;">加载失败: ' + error.message + '</td></tr>';
+            }
+        }
+
+        // 渲染密钥表格
+        function renderKeyManagementTable(keys) {
+            const tbody = document.getElementById('keyManagementTableBody');
+            
+            if (!keys || keys.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-secondary);">暂无密钥</td></tr>';
+                updateKeyPagination(0);
+                return;
+            }
+            
+            // 分页
+            const startIndex = (keyCurrentPage - 1) * keyPageSize;
+            const endIndex = Math.min(startIndex + keyPageSize, keys.length);
+            const pageKeys = keys.slice(startIndex, endIndex);
+            
+            let html = '';
+            pageKeys.forEach(key => {
+                const statusClass = key.enabled ? 'enabled' : 'disabled';
+                const statusText = key.enabled ? '已启用' : '已禁用';
+                const statusColor = key.enabled ? '#28a745' : '#dc3545';
+                const actionText = key.enabled ? '禁用' : '启用';
+                const actionColor = key.enabled ? '#dc3545' : '#28a745';
+                
+                // 显示完整密钥，不隐匿
+                const fullKey = key.key || key.masked_key || '';
+                
+                html += `<tr>
+                    <td style="color: var(--text-secondary);">#${key.index}</td>
+                    <td><code style="font-size: 11px; color: var(--text-color); word-break: break-all;">${fullKey}</code></td>
+                    <td><span class="status-badge ${statusClass}" style="background: ${statusColor}; color: white; padding: 2px 10px; border-radius: 4px; font-size: 12px;">${statusText}</span></td>
+                    <td style="color: var(--text-muted);">-</td>
+                    <td style="color: var(--text-muted);">-</td>
+                    <td style="text-align: right;">
+                        <button onclick="toggleKeyStatusModal(${key.index}, ${!key.enabled})" style="background: transparent; color: ${actionColor}; border: 1px solid ${actionColor}; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">${actionText}</button>
+                    </td>
+                </tr>`;
+            });
+            
+            tbody.innerHTML = html;
+            updateKeyPagination(keys.length);
+        }
+
+        // 更新分页信息
+        function updateKeyPagination(total) {
+            const startIndex = total > 0 ? (keyCurrentPage - 1) * keyPageSize + 1 : 0;
+            const endIndex = Math.min(keyCurrentPage * keyPageSize, total);
+            
+            document.getElementById('keyPageStart').textContent = startIndex;
+            document.getElementById('keyPageEnd').textContent = endIndex;
+            document.getElementById('keyPageTotal').textContent = total;
+            document.getElementById('keyCurrentPage').textContent = keyCurrentPage;
+            
+            const totalPages = Math.ceil(total / keyPageSize) || 1;
+            document.getElementById('keyPrevPage').disabled = keyCurrentPage <= 1;
+            document.getElementById('keyNextPage').disabled = keyCurrentPage >= totalPages;
+        }
+
+        // 切换页面
+        function changeKeyPage(delta) {
+            const total = keyManagementData.keys?.length || 0;
+            const totalPages = Math.ceil(total / keyPageSize) || 1;
+            const newPage = keyCurrentPage + delta;
+            
+            if (newPage >= 1 && newPage <= totalPages) {
+                keyCurrentPage = newPage;
+                renderKeyManagementTable(keyManagementData.keys);
+            }
+        }
+
+        // 跳转到指定页
+        function jumpToKeyPage() {
+            const input = document.getElementById('keyJumpPage');
+            const page = parseInt(input.value);
+            const total = keyManagementData.keys?.length || 0;
+            const totalPages = Math.ceil(total / keyPageSize) || 1;
+            
+            if (page >= 1 && page <= totalPages) {
+                keyCurrentPage = page;
+                renderKeyManagementTable(keyManagementData.keys);
+            }
+            input.value = '';
+        }
+
+        // 切换密钥状态（弹窗版）
+        async function toggleKeyStatusModal(index, enabled) {
+            try {
+                const response = await fetch(`/api/keys/${index}/status`, {
+                    method: 'PUT',
+                    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: enabled })
+                });
+                
+                if (response.ok) {
+                    loadKeyManagementModal();
+                } else {
+                    const error = await response.json();
+                    alert('操作失败: ' + (error.detail || '未知错误'));
+                }
+            } catch (error) {
+                alert('操作失败: ' + error.message);
+            }
+        }
+
+        // 启用全部密钥
+        async function enableAllKeys() {
+            if (!confirm('确定要启用所有密钥吗？')) return;
+            try {
+                const indices = keyManagementData.keys.map(k => k.index);
+                const response = await fetch('/api/keys/batch-status', {
+                    method: 'POST',
+                    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ indices: indices, enabled: true })
+                });
+                if (response.ok) {
+                    loadKeyManagementModal();
+                } else {
+                    const error = await response.json();
+                    alert('操作失败: ' + (error.detail || '未知错误'));
+                }
+            } catch (error) {
+                alert('操作失败: ' + error.message);
+            }
+        }
+
+        // 禁用全部密钥
+        async function disableAllKeys() {
+            if (!confirm('确定要禁用所有密钥吗？')) return;
+            try {
+                const indices = keyManagementData.keys.map(k => k.index);
+                const response = await fetch('/api/keys/batch-status', {
+                    method: 'POST',
+                    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ indices: indices, enabled: false })
+                });
+                if (response.ok) {
+                    loadKeyManagementModal();
+                } else {
+                    const error = await response.json();
+                    alert('操作失败: ' + (error.detail || '未知错误'));
+                }
+            } catch (error) {
+                alert('操作失败: ' + error.message);
+            }
+        }
+
+        // 删除自动禁用的密钥
+        async function deleteAutoDisabledKeys() {
+            alert('此功能暂未实现');
+        }
+
+        // ==================== 速率限制相关函数 ====================
         let rateLimitRefreshInterval = null;
 
         async function loadRateLimits() {
@@ -4148,6 +5364,86 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         </div>
     </div>
 <script>
+        // Temperature 和 Max Tokens 滑块更新函数
+        function updateTemperatureValue(value) {
+            document.getElementById('playgroundTemperatureValue').value = value;
+            const slider = document.getElementById('playgroundTemperature');
+            const percent = (value / 2) * 100;
+            slider.style.background = `linear-gradient(to right, #4285f4 0%, #4285f4 ${percent}%, #e0e0e0 ${percent}%, #e0e0e0 100%)`;
+        }
+
+        function updateTemperatureSlider(value) {
+            const slider = document.getElementById('playgroundTemperature');
+            slider.value = value;
+            updateTemperatureValue(value);
+        }
+
+        function updateMaxTokensValue(value) {
+            document.getElementById('playgroundMaxTokensValue').value = value;
+            const slider = document.getElementById('playgroundMaxTokens');
+            const max = parseInt(slider.max);
+            const percent = (value / max) * 100;
+            slider.style.background = `linear-gradient(to right, #4285f4 0%, #4285f4 ${percent}%, #e0e0e0 ${percent}%, #e0e0e0 100%)`;
+        }
+
+        function updateMaxTokensSlider(value) {
+            const slider = document.getElementById('playgroundMaxTokens');
+            slider.value = value;
+            updateMaxTokensValue(value);
+        }
+
+        // 根据模型更新 Max Tokens 上限
+        function updateMaxTokensLimit(model) {
+            const slider = document.getElementById('playgroundMaxTokens');
+            const valueInput = document.getElementById('playgroundMaxTokensValue');
+            
+            // 优先从 playgroundModelsMeta 获取 max_completion_tokens
+            const meta = playgroundModelsMeta[model] || modelMetaFromConfig[model] || (queriedModels.meta || {})[model] || {};
+            let maxTokens = parseInt(meta.max_tokens || 0);
+            
+            // 如果元数据中没有，使用默认值
+            if (!maxTokens || maxTokens <= 0) {
+                // 默认回退值
+                const defaultLimits = {
+                    'claude': 64000,
+                    'gpt-5': 128000,
+                    'gpt-4': 32768,
+                    'gemini': 65535,
+                    'default': 8192
+                };
+                
+                maxTokens = defaultLimits['default'];
+                for (const [key, limit] of Object.entries(defaultLimits)) {
+                    if (model && model.toLowerCase().includes(key)) {
+                        maxTokens = limit;
+                        break;
+                    }
+                }
+            }
+            
+            slider.max = maxTokens;
+            valueInput.max = maxTokens;
+            
+            // 如果当前值超过新上限，调整为新上限
+            const currentValue = parseInt(slider.value);
+            if (currentValue > maxTokens) {
+                slider.value = maxTokens;
+                valueInput.value = maxTokens;
+            }
+            
+            // 设置一个合理的默认值（不超过上限的一半或 4096，取较小值）
+            const defaultValue = Math.min(4096, Math.floor(maxTokens / 2));
+            if (currentValue > maxTokens || currentValue <= 0) {
+                slider.value = defaultValue;
+                valueInput.value = defaultValue;
+            }
+            
+            // 始终更新进度条背景以反映新的 max 值
+            updateMaxTokensValue(parseInt(slider.value));
+            
+            console.log(`Model ${model}: max_tokens limit set to ${maxTokens}, current value: ${slider.value}`);
+        }
+
         async function initPlayground(){
             try{
                 await loadModels();
@@ -4189,35 +5485,58 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             }
         }
 
+        // 存储从 /v1/models 获取的模型元数据
+        let playgroundModelsMeta = {};
+
         async function loadModels(){
             const sel = document.getElementById('playgroundModel');
             sel.innerHTML = '';
             const res = await fetch('/v1/models', { headers: getAuthHeaders() });
             const data = await res.json();
             const list = (data && data.data) ? data.data : [];
+            
+            // 保存模型元数据
+            playgroundModelsMeta = {};
             list.forEach(item => {
                 const id = item.id || item;
                 const opt = document.createElement('option');
                 opt.value = id;
                 opt.textContent = id;
                 sel.appendChild(opt);
+                
+                // 保存元数据，包括 max_completion_tokens
+                if (typeof item === 'object') {
+                    const tp = item.top_provider || {};
+                    playgroundModelsMeta[id] = {
+                        context_length: tp.context_length || item.context_length,
+                        max_tokens: tp.max_completion_tokens || item.max_completion_tokens,
+                        default_parameters: item.default_parameters || {}
+                    };
+                }
             });
+            
             if (!sel.value && list.length>0){ sel.value = (list[0].id || list[0]); }
             sel.onchange = ()=> applyModelDefaults(sel.value);
             applyModelDefaults(sel.value);
         }
 
         function applyModelDefaults(modelId){
-            const meta = modelMetaFromConfig[modelId] || (queriedModels.meta||{})[modelId] || {};
-            const maxT = parseInt(meta.max_tokens || 0);
-            if (maxT > 0){
-                const input = document.getElementById('playgroundMaxTokens');
-                if (input) input.value = maxT;
-            }
+            // 优先使用 playgroundModelsMeta，然后是 modelMetaFromConfig，最后是 queriedModels.meta
+            const meta = playgroundModelsMeta[modelId] || modelMetaFromConfig[modelId] || (queriedModels.meta||{})[modelId] || {};
+            
+            // 更新 max_tokens 滑块上限
+            updateMaxTokensLimit(modelId);
+            
+            // 设置默认参数
             const defs = meta.default_parameters || {};
             if (defs && (defs.temperature !== undefined && defs.temperature !== null)){
                 const t = document.getElementById('playgroundTemperature');
-                if (t) t.value = defs.temperature;
+                const tv = document.getElementById('playgroundTemperatureValue');
+                if (t) {
+                    t.value = defs.temperature;
+                    if (tv) tv.value = defs.temperature;
+                    updateTemperatureValue(defs.temperature);
+                }
             }
         }
 
@@ -4257,6 +5576,164 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         let playgroundTestInProgress = false;
         let playgroundAbortController = null;
 
+        // 预览请求
+        async function previewRequest() {
+            console.log('previewRequest called');
+            
+            const sel = document.getElementById('playgroundModel');
+            if (!sel || !sel.value) {
+                alert('请先选择模型');
+                return;
+            }
+            
+            const temp = parseFloat(document.getElementById('playgroundTemperature').value) || 0.5;
+            const maxT = parseInt(document.getElementById('playgroundMaxTokens').value) || 4096;
+            const stream = document.getElementById('playgroundStream')?.checked || false;
+            
+            const rows = Array.from(document.querySelectorAll('#playgroundMessages .form-group'));
+            let messages = rows.map(r => {
+                const selectEl = r.querySelector('select');
+                const textareaEl = r.querySelector('textarea');
+                if (!selectEl || !textareaEl) return null;
+                const role = selectEl.value;
+                const content = textareaEl.value;
+                return { role, content };
+            }).filter(m => m && (m.content || '').trim().length > 0);
+            
+            // 如果没有消息，使用默认消息
+            if (messages.length === 0) {
+                messages = [{ role: 'user', content: 'Hello' }];
+            }
+            
+            const requestData = {
+                model: sel.value,
+                messages: messages,
+                temperature: temp,
+                max_tokens: maxT,
+                stream: stream
+            };
+            
+            // 添加工具定义
+            const toolsStr = document.getElementById('playgroundToolsJson')?.value?.trim() || '';
+            if (toolsStr) {
+                try {
+                    requestData.tools = JSON.parse(toolsStr);
+                } catch (e) {
+                    alert('工具定义 JSON 格式错误: ' + e.message);
+                    return;
+                }
+            }
+            
+            console.log('Request data:', requestData);
+            
+            try {
+                const response = await fetch('/api/playground/preview', {
+                    method: 'POST',
+                    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+                
+                console.log('Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Preview data:', data);
+                    
+                    // 显示预览区域
+                    const previewSection = document.getElementById('requestPreviewSection');
+                    if (previewSection) {
+                        previewSection.style.display = 'block';
+                    }
+                    
+                    const methodEl = document.getElementById('previewMethod');
+                    const urlEl = document.getElementById('previewUrl');
+                    const headersEl = document.getElementById('previewHeaders');
+                    const bodyEl = document.getElementById('previewBody');
+                    
+                    if (methodEl) methodEl.textContent = data.method || 'POST';
+                    if (urlEl) urlEl.textContent = data.url || '';
+                    
+                    // 格式化请求头
+                    if (headersEl) {
+                        const headers = { ...data.headers };
+                        headersEl.textContent = JSON.stringify(headers, null, 2);
+                    }
+                    
+                    // 格式化请求体（使用 value 而不是 textContent，因为现在是 textarea）
+                    if (bodyEl) {
+                        bodyEl.value = JSON.stringify(data.body, null, 2);
+                        bodyEl.readOnly = true; // 默认只读，点击编辑后可编辑
+                    }
+                } else {
+                    const errorText = await response.text();
+                    console.error('Preview error:', errorText);
+                    try {
+                        const error = JSON.parse(errorText);
+                        alert('预览失败: ' + (error.detail || '未知错误'));
+                    } catch {
+                        alert('预览失败: ' + errorText);
+                    }
+                }
+            } catch (error) {
+                console.error('Preview request error:', error);
+                alert('预览失败: ' + error.message);
+            }
+        }
+
+        // 复制请求体
+        function copyRequestBody() {
+            const body = document.getElementById('previewBody').value;
+            navigator.clipboard.writeText(body).then(() => {
+                alert('已复制到剪贴板');
+            }).catch(err => {
+                alert('复制失败: ' + err.message);
+            });
+        }
+
+        // 编辑请求体
+        function editRequestBody() {
+            const textarea = document.getElementById('previewBody');
+            textarea.readOnly = false;
+            textarea.focus();
+            alert('现在可以编辑请求体了，编辑完成后点击"发送"按钮');
+        }
+
+        // 发送自定义请求
+        async function sendCustomRequest() {
+            const body = document.getElementById('previewBody').value;
+            
+            try {
+                const requestData = JSON.parse(body);
+                
+                // 使用现有的 sendPlayground 逻辑，但使用自定义的请求体
+                const sel = document.getElementById('playgroundModel');
+                const selectedKey = document.getElementById('playgroundApiKey')?.value || '';
+                
+                const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
+                if (selectedKey) {
+                    headers['X-API-Key'] = selectedKey;
+                }
+                
+                const response = await fetch('/v1/chat/completions', {
+                    method: 'POST',
+                    headers: headers,
+                    body: body
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('playgroundOutputContent').textContent = data.choices?.[0]?.message?.content || JSON.stringify(data);
+                    document.getElementById('playgroundRawJson').textContent = JSON.stringify(data, null, 2);
+                    showStatus('请求成功', 'success');
+                } else {
+                    const error = await response.text();
+                    showStatus('请求失败: ' + error, 'error');
+                }
+            } catch (e) {
+                alert('请求体格式错误或发送失败: ' + e.message);
+            }
+        }
+
         async function sendPlayground(){
             // 如果已有测试在进行，提示用户
             if (playgroundTestInProgress) {
@@ -4269,8 +5746,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             }
 
             const sel = document.getElementById('playgroundModel');
-            const temp = parseFloat(document.getElementById('playgroundTemperature').value) || 0.5;
-            const maxT = parseInt(document.getElementById('playgroundMaxTokens').value) || 4096;
+            const temp = parseFloat(document.getElementById('playgroundTemperatureValue')?.value || document.getElementById('playgroundTemperature').value) || 0.5;
+            const maxT = parseInt(document.getElementById('playgroundMaxTokensValue')?.value || document.getElementById('playgroundMaxTokens').value) || 4096;
             const selectedKey = document.getElementById('playgroundApiKey')?.value || '';
             
             const rows = Array.from(document.querySelectorAll('#playgroundMessages .form-group'));
@@ -4606,6 +6083,299 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             }catch(e){
                 showStatus('保存失败: '+e.message, 'error');
             }
+        }
+
+        // ==================== 账户管理相关函数 ====================
+        let accountSessionData = null;
+        let currentAccountSubTab = 'overview';
+
+        // 检查账户登录状态
+        async function checkAccountSession() {
+            try {
+                const res = await fetch('/api/account/session', { headers: getAuthHeaders() });
+                const data = await res.json();
+                accountSessionData = data;
+                if (data.logged_in) {
+                    document.getElementById('accountLoginSection').classList.add('hidden');
+                    document.getElementById('accountLoggedInSection').classList.remove('hidden');
+                    loadAccountOverview();
+                } else {
+                    document.getElementById('accountLoginSection').classList.remove('hidden');
+                    document.getElementById('accountLoggedInSection').classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('Check session failed:', e);
+            }
+        }
+
+        // 账户登录（邮箱密码）
+        async function accountLogin() {
+            const email = document.getElementById('accountEmail').value;
+            const password = document.getElementById('accountPassword').value;
+            if (!email || !password) {
+                showAccountStatus('请输入邮箱和密码', 'error');
+                return;
+            }
+            showAccountStatus('登录中...', 'info');
+            try {
+                const res = await fetch('/api/account/login', {
+                    method: 'POST',
+                    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showAccountStatus('登录成功', 'success');
+                    document.getElementById('accountPassword').value = '';
+                    await checkAccountSession();
+                } else {
+                    showAccountStatus(data.detail || '登录失败', 'error');
+                }
+            } catch (e) {
+                showAccountStatus('登录失败: ' + e.message, 'error');
+            }
+        }
+
+        // 账户登出
+        async function accountLogout() {
+            try {
+                await fetch('/api/account/logout', { method: 'POST', headers: getAuthHeaders() });
+                accountSessionData = null;
+                document.getElementById('accountLoginSection').classList.remove('hidden');
+                document.getElementById('accountLoggedInSection').classList.add('hidden');
+                showAccountStatus('已登出', 'success');
+            } catch (e) {
+                showAccountStatus('登出失败: ' + e.message, 'error');
+            }
+        }
+
+        // 显示账户状态消息
+        function showAccountStatus(message, type = 'info') {
+            const el = document.getElementById('accountStatus');
+            if (el) {
+                el.innerHTML = `<div class="status ${type}">${message}</div>`;
+            }
+        }
+
+        // 切换账户子标签页
+        function switchAccountSubTab(tabName) {
+            currentAccountSubTab = tabName;
+            const tabs = ['overview', 'usage', 'cost', 'rates'];
+            tabs.forEach(t => {
+                const el = document.getElementById('accountSub' + t.charAt(0).toUpperCase() + t.slice(1));
+                const btn = document.getElementById('accountSubTab' + t.charAt(0).toUpperCase() + t.slice(1));
+                if (el) el.classList.toggle('hidden', t !== tabName);
+                if (btn) btn.style.background = (t === tabName) ? '#4285f4' : '#6c757d';
+            });
+            // 加载对应数据
+            if (tabName === 'overview') loadAccountOverview();
+            else if (tabName === 'usage') loadAccountUsage();
+            else if (tabName === 'cost') loadAccountCost();
+            else if (tabName === 'rates') loadAccountRates();
+        }
+
+        // 加载账户概览
+        async function loadAccountOverview() {
+            loadAccountInfo();
+            loadAccountBilling();
+        }
+
+        // 加载账户信息
+        async function loadAccountInfo() {
+            const el = document.getElementById('accountInfoContent');
+            if (!el) return;
+            el.innerHTML = '<div class="loading">加载中...</div>';
+            try {
+                const res = await fetch('/api/account/info', { headers: getAuthHeaders() });
+                if (!res.ok) {
+                    if (res.status === 401) {
+                        await checkAccountSession();
+                        return;
+                    }
+                    throw new Error('加载失败');
+                }
+                const data = await res.json();
+                el.innerHTML = `
+                    <div style="display: grid; gap: 12px;">
+                        <div><strong>邮箱:</strong> ${data.email || '-'}</div>
+                        <div><strong>账户 ID:</strong> ${data.id || '-'}</div>
+                        <div><strong>类型:</strong> ${data.customer_type || '-'}</div>
+                        <div><strong>创建时间:</strong> ${data.created ? new Date(data.created).toLocaleDateString() : '-'}</div>
+                        <div><strong>支付方式:</strong> ${data.cc_brand ? data.cc_brand.toUpperCase() + ' ****' + data.cc_last4 : '未设置'}</div>
+                    </div>
+                `;
+            } catch (e) {
+                el.innerHTML = `<div class="status error">加载失败: ${e.message}</div>`;
+            }
+        }
+
+        // 加载账单信息
+        async function loadAccountBilling() {
+            const el = document.getElementById('accountBalanceContent');
+            if (!el) return;
+            el.innerHTML = '<div class="loading">加载中...</div>';
+            try {
+                const res = await fetch('/api/account/billing', { headers: getAuthHeaders() });
+                if (!res.ok) throw new Error('加载失败');
+                const data = await res.json();
+                const balance = data.balance || data.current_balance || 0;
+                el.innerHTML = `
+                    <div style="font-size: 32px; font-weight: bold; color: #28a745; margin-bottom: 12px;">
+                        $${typeof balance === 'number' ? balance.toFixed(2) : balance}
+                    </div>
+                    <a href="https://www.assemblyai.com/dashboard/account/billing" target="_blank" class="btn btn-sm" style="background: #17a2b8;">充值</a>
+                `;
+            } catch (e) {
+                el.innerHTML = `<div class="status error">加载失败: ${e.message}</div>`;
+            }
+        }
+
+        // 加载使用量数据
+        async function loadAccountUsage() {
+            const el = document.getElementById('accountUsageContent');
+            if (!el) return;
+            el.innerHTML = '<div class="loading">加载中...</div>';
+            const window_size = document.getElementById('accountUsageWindow')?.value || 'month';
+            try {
+                const res = await fetch(`/api/account/usage?window_size=${window_size}`, { headers: getAuthHeaders() });
+                if (!res.ok) throw new Error('加载失败');
+                const data = await res.json();
+                let html = '<div style="display: grid; gap: 16px;">';
+                if (data.items && data.items.length > 0) {
+                    html += '<table class="table" style="width: 100%;"><thead><tr><th>日期</th><th>产品</th><th>模型</th><th>使用量</th></tr></thead><tbody>';
+                    data.items.forEach(item => {
+                        html += `<tr><td>${item.date || '-'}</td><td>${item.product || '-'}</td><td>${item.model || '-'}</td><td>${item.usage || 0} ${item.unit || ''}</td></tr>`;
+                    });
+                    html += '</tbody></table>';
+                } else {
+                    html += '<div class="status info">暂无使用量数据</div>';
+                }
+                html += '</div>';
+                el.innerHTML = html;
+            } catch (e) {
+                el.innerHTML = `<div class="status error">加载失败: ${e.message}</div>`;
+            }
+        }
+
+        // 加载成本数据
+        async function loadAccountCost() {
+            const el = document.getElementById('accountCostContent');
+            if (!el) return;
+            el.innerHTML = '<div class="loading">加载中...</div>';
+            const window_size = document.getElementById('accountCostWindow')?.value || 'month';
+            const group_by = document.getElementById('accountCostGroupBy')?.value || 'model';
+            try {
+                const res = await fetch(`/api/account/cost?window_size=${window_size}&group_by=${group_by}`, { headers: getAuthHeaders() });
+                if (!res.ok) throw new Error('加载失败');
+                const data = await res.json();
+                let html = '<div style="display: grid; gap: 16px;">';
+                if (data.total_cost !== undefined) {
+                    html += `<div style="font-size: 24px; font-weight: bold; color: #dc3545;">总成本: $${data.total_cost.toFixed(5)}</div>`;
+                }
+                if (data.items && data.items.length > 0) {
+                    html += '<table class="table" style="width: 100%;"><thead><tr><th>日期</th><th>模型</th><th>输入 Tokens</th><th>输出 Tokens</th><th>成本</th></tr></thead><tbody>';
+                    data.items.forEach(item => {
+                        html += `<tr><td>${item.date || '-'}</td><td>${item.model || '-'}</td><td>${item.input_tokens || 0}</td><td>${item.output_tokens || 0}</td><td>$${(item.cost || 0).toFixed(5)}</td></tr>`;
+                    });
+                    html += '</tbody></table>';
+                } else {
+                    html += '<div class="status info">暂无成本数据</div>';
+                }
+                html += '</div>';
+                el.innerHTML = html;
+            } catch (e) {
+                el.innerHTML = `<div class="status error">加载失败: ${e.message}</div>`;
+            }
+        }
+
+        // 导出成本数据
+        async function exportAccountCost(format) {
+            const window_size = document.getElementById('accountCostWindow')?.value || 'month';
+            try {
+                const res = await fetch(`/api/account/export/cost?format=${format}&window_size=${window_size}`, { headers: getAuthHeaders() });
+                if (!res.ok) throw new Error('导出失败');
+                const data = await res.json();
+                const content = format === 'csv' ? data.data : JSON.stringify(data.data, null, 2);
+                const blob = new Blob([content], { type: format === 'csv' ? 'text/csv' : 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `cost_export.${format}`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showAccountStatus('导出成功', 'success');
+            } catch (e) {
+                showAccountStatus('导出失败: ' + e.message, 'error');
+            }
+        }
+
+        // 加载费率数据
+        async function loadAccountRates() {
+            const el = document.getElementById('accountRatesContent');
+            if (!el) return;
+            el.innerHTML = '<div class="loading">加载中...</div>';
+            const region = document.getElementById('accountRatesRegion')?.value || 'US';
+            try {
+                const res = await fetch(`/api/account/rates?region=${region}`, { headers: getAuthHeaders() });
+                if (!res.ok) throw new Error('加载失败');
+                const data = await res.json();
+                let html = '<div style="display: grid; gap: 20px;">';
+                
+                // Speech-to-Text
+                if (data.speech_to_text && data.speech_to_text.length > 0) {
+                    html += '<div><h5>Speech-to-Text</h5><table class="table" style="width: 100%;"><thead><tr><th>模型</th><th>费率</th></tr></thead><tbody>';
+                    data.speech_to_text.forEach(item => {
+                        html += `<tr><td>${item.model}${item.beta ? ' <span style="color: #ffc107; font-size: 11px;">Beta</span>' : ''}</td><td>$${item.rate} / ${item.unit}</td></tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                }
+                
+                // Streaming
+                if (data.streaming && data.streaming.length > 0) {
+                    html += '<div><h5>Streaming</h5><table class="table" style="width: 100%;"><thead><tr><th>模型</th><th>费率</th></tr></thead><tbody>';
+                    data.streaming.forEach(item => {
+                        html += `<tr><td>${item.model}${item.beta ? ' <span style="color: #ffc107; font-size: 11px;">Beta</span>' : ''}</td><td>$${item.rate} / ${item.unit}</td></tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                }
+                
+                // LLM Gateway Input
+                if (data.llm_gateway_input && data.llm_gateway_input.length > 0) {
+                    html += '<div><h5>LLM Gateway (Input)</h5><table class="table" style="width: 100%;"><thead><tr><th>模型</th><th>费率</th></tr></thead><tbody>';
+                    data.llm_gateway_input.forEach(item => {
+                        html += `<tr><td>${item.model}</td><td>$${item.rate} / ${item.unit}</td></tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                }
+                
+                // LLM Gateway Output
+                if (data.llm_gateway_output && data.llm_gateway_output.length > 0) {
+                    html += '<div><h5>LLM Gateway (Output)</h5><table class="table" style="width: 100%;"><thead><tr><th>模型</th><th>费率</th></tr></thead><tbody>';
+                    data.llm_gateway_output.forEach(item => {
+                        html += `<tr><td>${item.model}</td><td>$${item.rate} / ${item.unit}</td></tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                }
+                
+                // Notes
+                if (data.notes && data.notes.length > 0) {
+                    html += '<div style="color: var(--text-secondary); font-size: 12px; margin-top: 12px;">';
+                    data.notes.forEach(note => {
+                        html += `<div>${note}</div>`;
+                    });
+                    html += '</div>';
+                }
+                
+                html += '</div>';
+                el.innerHTML = html;
+            } catch (e) {
+                el.innerHTML = `<div class="status error">加载失败: ${e.message}</div>`;
+            }
+        }
+
+        // 初始化账户管理标签页
+        function initAccountTab() {
+            checkAccountSession();
         }
     </script>
     </body>

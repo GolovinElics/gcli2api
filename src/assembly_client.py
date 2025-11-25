@@ -10,6 +10,8 @@ from .models import ChatCompletionRequest
 from .httpx_client import http_client
 from .usage_stats import record_successful_call
 from .storage_adapter import get_storage_adapter
+from .rate_limiter import get_rate_limiter
+from .key_selector import get_key_selector
 from config import (
     get_assembly_endpoint,
     get_assembly_api_keys,
@@ -159,6 +161,81 @@ def _next_key_index(n: int) -> int:
     oldest_idx = min(_failed_keys.keys(), key=lambda k: _failed_keys[k])
     return oldest_idx
 
+
+async def _next_key_index_async(n: int) -> int:
+    """
+    异步智能 Key 选择（集成速率限制和轮换策略）：
+    1. 使用 KeySelector 进行智能选择
+    2. 考虑速率限制状态
+    3. 考虑轮换策略
+    4. 失败记录会在 60 秒后自动清除
+    """
+    import time
+    from .models_key import KeyInfo, KeyStatus
+    
+    current_time = time.time()
+    
+    # 清理过期的失败记录（60秒后清除）
+    expired_keys = [k for k, t in _failed_keys.items() if current_time - t > 60]
+    for k in expired_keys:
+        del _failed_keys[k]
+    
+    # 获取速率限制管理器和密钥选择器
+    try:
+        rate_limiter = await get_rate_limiter()
+        key_selector = get_key_selector()
+    except Exception as e:
+        log.warning(f"Failed to get rate limiter or key selector, falling back to sync selection: {e}")
+        return _next_key_index(n)
+    
+    # 同步失败记录到 KeySelector
+    for idx, fail_time in _failed_keys.items():
+        if idx not in key_selector.get_failed_keys():
+            await key_selector.mark_key_failed(idx, "sync from assembly_client")
+    
+    # 构建 KeyInfo 列表
+    keys = []
+    for i in range(n):
+        # 检查速率限制状态
+        is_exhausted = await rate_limiter.is_key_exhausted(i)
+        status = KeyStatus.EXHAUSTED if is_exhausted else KeyStatus.ACTIVE
+        
+        keys.append(KeyInfo(
+            index=i,
+            key=f"key_{i}",  # 占位符
+            enabled=True,
+            status=status
+        ))
+    
+    # 使用 KeySelector 选择密钥
+    selected = await key_selector.select_next_key(keys)
+    
+    if selected is not None:
+        # 检查是否需要轮换
+        should_rotate = await key_selector.should_rotate_with_rate_limit(selected.index, rate_limiter)
+        if should_rotate:
+            log.debug(f"Key {selected.index} triggered rotation, selecting next key")
+            # 重新选择下一个密钥
+            next_selected = await key_selector.select_next_key(keys)
+            if next_selected is not None:
+                return next_selected.index
+        return selected.index
+    
+    # 所有 Key 都用尽或失败，尝试找最早重置的
+    all_indices = list(range(n))
+    next_available = await rate_limiter.get_next_available_key(all_indices)
+    if next_available is not None:
+        return next_available
+    
+    # 回退到失败时间最早的
+    if _failed_keys:
+        oldest_idx = min(_failed_keys.keys(), key=lambda k: _failed_keys[k])
+        return oldest_idx
+    
+    # 最后回退到 Round-Robin
+    i = next(_rr_counter)
+    return i % n
+
 def _mark_key_failed(idx: int):
     """标记 Key 失败"""
     import time
@@ -174,7 +251,7 @@ def _mask_key(key: str) -> str:
     return k[:4] + "..." + k[-4:]
 
 async def _update_rate_limit_info(idx: int, api_key: str, headers: dict):
-    """更新速率限制信息"""
+    """更新速率限制信息 - 使用新的 RateLimiter"""
     import time
     try:
         limit = headers.get('x-ratelimit-limit')
@@ -183,25 +260,33 @@ async def _update_rate_limit_info(idx: int, api_key: str, headers: dict):
         
         if limit is not None or remaining is not None:
             masked_key = _mask_key(api_key)
+            
+            # 同时更新旧的内存缓存（兼容性）
             if idx not in _rate_limit_info:
                 _rate_limit_info[idx] = {
                     "key": masked_key,
-                    "full_key": api_key,  # 保存完整key用于匹配
+                    "full_key": api_key,
                 }
             
             info = _rate_limit_info[idx]
             info["last_request_time"] = time.time()
             
+            limit_val = 0
+            remaining_val = 0
+            reset_time = 0
+            
             if limit is not None:
                 try:
-                    info["limit"] = int(limit)
+                    limit_val = int(limit)
+                    info["limit"] = limit_val
                 except (ValueError, TypeError):
                     pass
             
             if remaining is not None:
                 try:
-                    info["remaining"] = int(remaining)
-                    info["used"] = info.get("limit", 0) - int(remaining)
+                    remaining_val = int(remaining)
+                    info["remaining"] = remaining_val
+                    info["used"] = info.get("limit", 0) - remaining_val
                 except (ValueError, TypeError):
                     pass
             
@@ -209,17 +294,24 @@ async def _update_rate_limit_info(idx: int, api_key: str, headers: dict):
                 try:
                     reset_val = int(reset)
                     if reset_val > 0:
-                        # reset是秒数，计算重置时间戳
-                        info["reset_time"] = time.time() + reset_val
+                        reset_time = int(time.time() + reset_val)
+                        info["reset_time"] = reset_time
                     else:
-                        # reset为0表示已经可以重置或者在下一分钟
-                        info["reset_time"] = time.time() + 60
+                        reset_time = int(time.time() + 60)
+                        info["reset_time"] = reset_time
                 except (ValueError, TypeError):
                     pass
             
-            log.debug(f"Updated rate limit info for key {masked_key}: limit={info.get('limit')}, remaining={info.get('remaining')}, reset_in={reset}s")
+            log.debug(f"Updated rate limit info for key {masked_key}: limit={limit_val}, remaining={remaining_val}, reset_in={reset}s")
             
-            # 异步保存到存储
+            # 使用新的 RateLimiter 更新
+            try:
+                rate_limiter = await get_rate_limiter()
+                await rate_limiter.update_rate_limit(idx, limit_val, remaining_val, reset_time)
+            except Exception as e:
+                log.warning(f"Failed to update RateLimiter: {e}")
+            
+            # 异步保存到存储（兼容旧系统）
             asyncio.create_task(_save_rate_limit_info())
     except Exception as e:
         log.error(f"Failed to update rate limit info: {e}")
@@ -398,7 +490,8 @@ async def send_assembly_request(
     for attempt in range(max_retries + 1):
         try:
             async with http_client.get_client(timeout=None) as client:
-                idx = _next_key_index(len(keys))
+                # 使用异步密钥选择（集成速率限制检查）
+                idx = await _next_key_index_async(len(keys))
                 api_key = keys[idx]
                 headers = {"Authorization": api_key, "Content-Type": "application/json"}
                 

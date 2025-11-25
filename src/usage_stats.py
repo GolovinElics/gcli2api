@@ -12,6 +12,7 @@ from config import get_credentials_dir, is_mongodb_mode
 from log import log
 from .state_manager import get_state_manager
 from .storage_adapter import get_storage_adapter
+from .stats_tracker import get_stats_tracker
 
 
 def _get_next_utc_7am() -> datetime:
@@ -302,6 +303,21 @@ class UsageStats:
                 
             except Exception as e:
                 log.error(f"Failed to record usage statistics: {e}")
+        
+        # 同时记录到 StatsTracker（用于密钥级别统计）
+        try:
+            stats_tracker = await get_stats_tracker()
+            # 从 filename 提取密钥索引（如果是 key:xxx 格式）
+            key_index = 0
+            if filename.startswith("key:"):
+                try:
+                    # 尝试从哈希中提取索引（简化处理）
+                    key_index = hash(filename) % 1000
+                except:
+                    pass
+            await stats_tracker.record_call(key_index, True, model_name, display_name or "")
+        except Exception as e:
+            log.warning(f"Failed to record to StatsTracker: {e}")
         
         # Save stats asynchronously
         try:

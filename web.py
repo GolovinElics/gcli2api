@@ -16,6 +16,9 @@ from fastapi.staticfiles import StaticFiles
 # Import all routers
 from src.openai_router import router as openai_router
 from src.admin_routes import router as admin_router
+from src.key_management_api import router as key_management_router
+from src.playground_api import router as playground_router
+from src.account_api import router as account_router
 # Google/Gemini 相关路由与控制面板已移除
 
 # Import managers and utilities
@@ -79,6 +82,27 @@ app.include_router(
     admin_router,
     prefix="",
     tags=["Admin Panel"]
+)
+
+# 密钥管理路由 - 密钥增删改查和配置管理
+app.include_router(
+    key_management_router,
+    prefix="",
+    tags=["Key Management"]
+)
+
+# 操练场增强路由 - 请求预览和自定义报文
+app.include_router(
+    playground_router,
+    prefix="",
+    tags=["Playground Enhancement"]
+)
+
+# 账户管理路由 - 账户信息、使用量、成本、发票等
+app.include_router(
+    account_router,
+    prefix="",
+    tags=["Account Management"]
 )
 
 # Gemini原生路由 - 处理Gemini格式请求
