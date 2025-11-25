@@ -16,6 +16,9 @@ from fastapi.staticfiles import StaticFiles
 # Import all routers
 from src.openai_router import router as openai_router
 from src.admin_routes import router as admin_router
+from src.account_api import router as account_router
+from src.key_management_api import router as keys_router
+from src.playground_api import router as playground_router
 from src.key_management_api import router as key_management_router
 from src.playground_api import router as playground_router
 from src.account_api import router as account_router
@@ -56,7 +59,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AMB2API",
     description="AssemblyAI LLM Gateway proxy with OpenAI compatibility",
-    version="0.2.0",
+    version="0.2.1",
     lifespan=lifespan
 )
 
@@ -82,6 +85,24 @@ app.include_router(
     admin_router,
     prefix="",
     tags=["Admin Panel"]
+)
+
+app.include_router(
+    account_router,
+    prefix="",
+    tags=["account"]
+)
+
+app.include_router(
+    keys_router,
+    prefix="",
+    tags=["Key Management"]
+)
+
+app.include_router(
+    playground_router,
+    prefix="",
+    tags=["Playground"]
 )
 
 # 密钥管理路由 - 密钥增删改查和配置管理
