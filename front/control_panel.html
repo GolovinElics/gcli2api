@@ -673,6 +673,10 @@
             overflow-x: hidden;
         }
 
+        @media (max-width: 480px) {
+            .container { padding: 16px; }
+        }
+
         h1 {
             color: var(--text-color);
             text-align: center;
@@ -971,6 +975,10 @@
             min-width: 600px;
         }
 
+        @media (max-width: 480px) {
+            .cred-card { min-width: auto; }
+        }
+
         .cred-card.disabled {
             background-color: #f5f5f5;
             border-color: #ccc;
@@ -994,6 +1002,10 @@
             overflow: hidden;
             text-overflow: ellipsis;
             min-width: 300px;
+        }
+
+        @media (max-width: 480px) {
+            .cred-filename { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
         }
 
         .cred-status {

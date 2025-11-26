@@ -443,23 +443,23 @@ async def get_account_info() -> Dict[str, Any]:
     user_info = session.get("user_info")
     if user_info:
         return {
-            "id": user_info.get("id"),
-            "email": user_info.get("email"),
-            "customer_type": user_info.get("customer_type", "PAYG"),
+            "id": str(user_info.get("id") or session.get("user_id") or ""),
+            "email": str(user_info.get("email") or session.get("email") or ""),
+            "customer_type": str(user_info.get("customer_type") or "PAYG"),
             "cc_brand": user_info.get("cc_brand"),
             "cc_last4": user_info.get("cc_last4"),
-            "created": user_info.get("created"),
-            "api_token": user_info.get("api_token"),
+            "created": str(user_info.get("created") or session.get("logged_in_at") or ""),
+            "api_token": user_info.get("api_token") or session.get("api_token"),
         }
     
     # 兼容旧 session 格式
     return {
-        "id": session.get("user_id"),
-        "email": session.get("email"),
-        "customer_type": session.get("customer_type", "PAYG"),
+        "id": str(session.get("user_id") or ""),
+        "email": str(session.get("email") or ""),
+        "customer_type": str(session.get("customer_type") or "PAYG"),
         "cc_brand": None,
         "cc_last4": None,
-        "created": session.get("logged_in_at"),
+        "created": str(session.get("logged_in_at") or ""),
         "api_token": session.get("api_token"),
     }
 
