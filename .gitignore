@@ -3,6 +3,7 @@
 *.toml
 *.md
 test_*
+debug_*
 creds/
 
 # Environment configuration

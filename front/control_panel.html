@@ -670,6 +670,7 @@
             border-radius: 10px;
             box-shadow: 0 2px 10px var(--shadow-color);
             transition: background-color 0.3s ease;
+            overflow-x: hidden;
         }
 
         h1 {
@@ -823,6 +824,7 @@
             gap: 6px;
             border-bottom: 1px solid #e5e7eb;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
 
         .tab {
@@ -855,6 +857,29 @@
 
         .tab-content.active {
             display: block;
+        }
+
+        @media (max-width: 480px) {
+            .tabs { gap: 4px; }
+            .tab { padding: 8px 12px; font-size: 14px; }
+        }
+
+        /* 成本页移动端响应式 */
+        .responsive-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+        }
+        .responsive-item { min-width: 0; }
+        .summary-card { text-align: center; padding: 20px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color); }
+        .summary-card .summary-title { font-size: 14px; color: var(--text-secondary); }
+        .summary-card .summary-sub { font-size: 14px; color: var(--text-secondary); }
+        .summary-card .summary-value { font-size: 42px; font-weight: bold; color: var(--text-color); }
+        .summary-card { width: 100%; box-sizing: border-box; }
+        .cost-label { word-break: break-word; overflow-wrap: anywhere; }
+        @media (max-width: 480px) {
+            .summary-card .summary-value { font-size: 30px; }
+            .responsive-grid { grid-template-columns: 1fr; }
         }
 
         .upload-area {
@@ -1312,6 +1337,7 @@
             padding: 20px;
             margin: 15px 0;
             transition: background-color 0.3s ease, border-color 0.3s ease;
+            overflow-x: hidden;
         }
 
         .config-group h4 {
@@ -1843,12 +1869,12 @@
 
             <!-- 标签页 -->
             <div class="tabs">
+                <button class="tab" onclick="switchTab('account')">账户管理</button>
                 <button class="tab active" onclick="switchTab('config')">配置管理</button>
                 <button class="tab" onclick="switchTab('ratelimit')">速率限制</button>
                 <button class="tab" onclick="switchTab('usage')">使用统计</button>
                 <button class="tab" onclick="switchTab('playground')">操练场</button>
                 <button class="tab" onclick="switchTab('logs')">实时日志</button>
-                <button class="tab" onclick="switchTab('account')">账户管理</button>
             </div>
 
 
@@ -2634,7 +2660,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
 
                     <!-- 概览子页面 -->
                     <div id="accountSubOverview">
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
                             <!-- 账户信息卡片 -->
                             <div class="config-group">
                                 <h4>账户信息</h4>
@@ -2657,11 +2683,11 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         <div class="config-group">
                             <h4>使用量统计</h4>
                             <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
-                                <select id="accountUsageWindow" class="config-input" style="width: auto;" onchange="loadAccountUsage()">
+                                <select id="accountUsageWindow" class="config-input" style="width: auto;" onchange="loadAccountUsage(true)">
                                     <option value="week">最近 7 天</option>
                                     <option value="month" selected>最近 30 天</option>
                                 </select>
-                                <button class="btn btn-sm" onclick="loadAccountUsage()">刷新</button>
+                                <button class="btn btn-sm" onclick="loadAccountUsage(true)">刷新</button>
                             </div>
                             <div id="accountUsageContent">
                                 <div class="loading">加载中...</div>
@@ -2674,15 +2700,15 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         <div class="config-group">
                             <h4>成本分析</h4>
                             <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
-                                <select id="accountCostWindow" class="config-input" style="width: auto;" onchange="loadAccountCost()">
+                                <select id="accountCostWindow" class="config-input" style="width: auto;" onchange="loadAccountCost(true)">
                                     <option value="week">最近 7 天</option>
                                     <option value="month" selected>最近 30 天</option>
                                 </select>
-                                <select id="accountCostGroupBy" class="config-input" style="width: auto;" onchange="loadAccountCost()">
+                                <select id="accountCostGroupBy" class="config-input" style="width: auto;" onchange="loadAccountCost(true)">
                                     <option value="model" selected>按模型</option>
                                     <option value="date">按日期</option>
                                 </select>
-                                <button class="btn btn-sm" onclick="loadAccountCost()">刷新</button>
+                                <button class="btn btn-sm" onclick="loadAccountCost(true)">刷新</button>
                                 <button class="btn btn-sm" onclick="exportAccountCost('json')" style="background: #17a2b8;">导出 JSON</button>
                                 <button class="btn btn-sm" onclick="exportAccountCost('csv')" style="background: #17a2b8;">导出 CSV</button>
                             </div>
@@ -2697,11 +2723,11 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         <div class="config-group">
                             <h4>费率信息</h4>
                             <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-                                <select id="accountRatesRegion" class="config-input" style="width: auto;" onchange="loadAccountRates()">
+                                <select id="accountRatesRegion" class="config-input" style="width: auto;" onchange="loadAccountRates(true)">
                                     <option value="US" selected>US</option>
                                     <option value="Europe">Europe</option>
                                 </select>
-                                <button class="btn btn-sm" onclick="loadAccountRates()">刷新</button>
+                                <button class="btn btn-sm" onclick="loadAccountRates(true)">刷新</button>
                             </div>
                             <div id="accountRatesContent">
                                 <div class="loading">加载中...</div>
@@ -6088,6 +6114,31 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         // ==================== 账户管理相关函数 ====================
         let accountSessionData = null;
         let currentAccountSubTab = 'overview';
+        const ACCOUNT_CACHE_TTL_MS = 5 * 60 * 1000;
+        let accountAutoRefreshTimer = null;
+        const accountCache = {
+            info: { ts: 0, html: '' },
+            billing: { ts: 0, html: '' },
+            usage: {},  // key: window_size -> { ts, html }
+            cost: {},   // key: window_size|group_by -> { ts, html }
+            rates: { ts: 0, html: '' }
+        };
+        function isFresh(ts) { return !!ts && (Date.now() - ts) < ACCOUNT_CACHE_TTL_MS; }
+        function startAccountAutoRefresh() {
+            if (accountAutoRefreshTimer) clearInterval(accountAutoRefreshTimer);
+            accountAutoRefreshTimer = setInterval(() => {
+                if (currentAccountSubTab === 'overview') {
+                    loadAccountInfo(true);
+                    loadAccountBilling(true);
+                } else if (currentAccountSubTab === 'usage') {
+                    loadAccountUsage(true);
+                } else if (currentAccountSubTab === 'cost') {
+                    loadAccountCost(true);
+                } else if (currentAccountSubTab === 'rates') {
+                    loadAccountRates(true);
+                }
+            }, ACCOUNT_CACHE_TTL_MS);
+        }
 
         // 检查账户登录状态
         async function checkAccountSession() {
@@ -6098,7 +6149,13 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 if (data.logged_in) {
                     document.getElementById('accountLoginSection').classList.add('hidden');
                     document.getElementById('accountLoggedInSection').classList.remove('hidden');
-                    loadAccountOverview();
+                    // 预加载四个子页数据（并写入缓存），提升切换体验
+                    loadAccountOverview(true);
+                    loadAccountUsage(true);
+                    loadAccountCost(true);
+                    loadAccountRates(true);
+                    // 默认显示概览
+                    switchAccountSubTab('overview');
                 } else {
                     document.getElementById('accountLoginSection').classList.remove('hidden');
                     document.getElementById('accountLoggedInSection').classList.add('hidden');
@@ -6167,23 +6224,65 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 if (el) el.classList.toggle('hidden', t !== tabName);
                 if (btn) btn.style.background = (t === tabName) ? '#4285f4' : '#6c757d';
             });
-            // 加载对应数据
-            if (tabName === 'overview') loadAccountOverview();
-            else if (tabName === 'usage') loadAccountUsage();
-            else if (tabName === 'cost') loadAccountCost();
-            else if (tabName === 'rates') loadAccountRates();
+            // 加载对应数据（优先使用缓存，缓存过期或不存在才请求）
+            if (tabName === 'overview') {
+                const infoEl = document.getElementById('accountInfoContent');
+                const balEl = document.getElementById('accountBalanceContent');
+                if (infoEl && accountCache.info.html && isFresh(accountCache.info.ts)) {
+                    infoEl.innerHTML = accountCache.info.html;
+                } else {
+                    loadAccountInfo();
+                }
+                if (balEl && accountCache.billing.html && isFresh(accountCache.billing.ts)) {
+                    balEl.innerHTML = accountCache.billing.html;
+                } else {
+                    loadAccountBilling();
+                }
+            } else if (tabName === 'usage') {
+                const key = (document.getElementById('accountUsageWindow')?.value || 'month');
+                const el = document.getElementById('accountUsageContent');
+                const cached = accountCache.usage[key];
+                if (el && cached && cached.html && isFresh(cached.ts)) {
+                    el.innerHTML = cached.html;
+                } else {
+                    loadAccountUsage();
+                }
+            } else if (tabName === 'cost') {
+                const w = (document.getElementById('accountCostWindow')?.value || 'month');
+                const g = (document.getElementById('accountCostGroupBy')?.value || 'model');
+                const key = `${w}|${g}`;
+                const el = document.getElementById('accountCostContent');
+                const cached = accountCache.cost[key];
+                if (el && cached && cached.html && isFresh(cached.ts)) {
+                    el.innerHTML = cached.html;
+                } else {
+                    loadAccountCost();
+                }
+            } else if (tabName === 'rates') {
+                const el = document.getElementById('accountRatesContent');
+                if (el && accountCache.rates.html && isFresh(accountCache.rates.ts)) {
+                    el.innerHTML = accountCache.rates.html;
+                } else {
+                    loadAccountRates();
+                }
+            }
+            startAccountAutoRefresh();
         }
 
         // 加载账户概览
-        async function loadAccountOverview() {
-            loadAccountInfo();
-            loadAccountBilling();
+        async function loadAccountOverview(force = false) {
+            loadAccountInfo(force);
+            loadAccountBilling(force);
         }
 
         // 加载账户信息
-        async function loadAccountInfo() {
+        async function loadAccountInfo(force = false) {
             const el = document.getElementById('accountInfoContent');
             if (!el) return;
+            if (!force && accountCache.info.html && isFresh(accountCache.info.ts)) {
+                el.innerHTML = accountCache.info.html;
+                return;
+            }
             el.innerHTML = '<div class="loading">加载中...</div>';
             try {
                 const res = await fetch('/api/account/info', { headers: getAuthHeaders() });
@@ -6195,7 +6294,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     throw new Error('加载失败');
                 }
                 const data = await res.json();
-                el.innerHTML = `
+                const html = `
                     <div style="display: grid; gap: 12px;">
                         <div><strong>邮箱:</strong> ${data.email || '-'}</div>
                         <div><strong>账户 ID:</strong> ${data.id || '-'}</div>
@@ -6204,90 +6303,292 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         <div><strong>支付方式:</strong> ${data.cc_brand ? data.cc_brand.toUpperCase() + ' ****' + data.cc_last4 : '未设置'}</div>
                     </div>
                 `;
+                accountCache.info = { ts: Date.now(), html };
+                el.innerHTML = html;
             } catch (e) {
                 el.innerHTML = `<div class="status error">加载失败: ${e.message}</div>`;
             }
         }
 
         // 加载账单信息
-        async function loadAccountBilling() {
+        async function loadAccountBilling(force = false) {
             const el = document.getElementById('accountBalanceContent');
             if (!el) return;
-            el.innerHTML = '<div class="loading">加载中...</div>';
-            try {
-                const res = await fetch('/api/account/billing', { headers: getAuthHeaders() });
-                if (!res.ok) throw new Error('加载失败');
-                const data = await res.json();
-                const balance = data.balance || data.current_balance || 0;
-                el.innerHTML = `
-                    <div style="font-size: 32px; font-weight: bold; color: #28a745; margin-bottom: 12px;">
-                        $${typeof balance === 'number' ? balance.toFixed(2) : balance}
-                    </div>
-                    <a href="https://www.assemblyai.com/dashboard/account/billing" target="_blank" class="btn btn-sm" style="background: #17a2b8;">充值</a>
-                `;
-            } catch (e) {
-                el.innerHTML = `<div class="status error">加载失败: ${e.message}</div>`;
+            if (!force && accountCache.billing.html && isFresh(accountCache.billing.ts)) {
+                el.innerHTML = accountCache.billing.html;
+                return;
             }
-        }
-
-        // 加载使用量数据
-        async function loadAccountUsage() {
-            const el = document.getElementById('accountUsageContent');
-            if (!el) return;
             el.innerHTML = '<div class="loading">加载中...</div>';
-            const window_size = document.getElementById('accountUsageWindow')?.value || 'month';
             try {
-                const res = await fetch(`/api/account/usage?window_size=${window_size}`, { headers: getAuthHeaders() });
+                const res = await fetch('/api/account/billing' + (force ? '?force=1' : ''), { headers: getAuthHeaders() });
                 if (!res.ok) throw new Error('加载失败');
                 const data = await res.json();
-                let html = '<div style="display: grid; gap: 16px;">';
-                if (data.items && data.items.length > 0) {
-                    html += '<table class="table" style="width: 100%;"><thead><tr><th>日期</th><th>产品</th><th>模型</th><th>使用量</th></tr></thead><tbody>';
-                    data.items.forEach(item => {
-                        html += `<tr><td>${item.date || '-'}</td><td>${item.product || '-'}</td><td>${item.model || '-'}</td><td>${item.usage || 0} ${item.unit || ''}</td></tr>`;
-                    });
-                    html += '</tbody></table>';
-                } else {
-                    html += '<div class="status info">暂无使用量数据</div>';
-                }
+                console.log('Billing data:', data);
+                
+                const balance = data.balance || 0;
+                const totalSpend = data.total_spend_30_days || 0;
+                
+                let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">';
+                html += '<div style="text-align: center; padding: 20px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
+                html += '<div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">当前余额</div>';
+                html += '<div style="font-size: 32px; font-weight: bold; color: var(--text-color);">$' + balance.toFixed(2) + '</div>';
                 html += '</div>';
+                html += '<div style="text-align: center; padding: 20px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
+                html += '<div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">30天消费</div>';
+                html += '<div style="font-size: 32px; font-weight: bold; color: var(--text-color);">$' + totalSpend.toFixed(5) + '</div>';
+                html += '</div></div>';
+                html += '<div style="margin-top: 16px; text-align: center;">';
+                html += '<a href="https://www.assemblyai.com/dashboard/account/billing" target="_blank" class="btn btn-sm" style="background: #17a2b8;">充值</a>';
+                html += '<button class="btn btn-sm" onclick="loadAccountBilling(true)" style="margin-left: 8px;">刷新</button>';
+                html += '</div>';
+                
+                if (data.error) {
+                    html += '<div class="status warning" style="margin-top: 12px;">注意: ' + data.error + '</div>';
+                }
+                
+                accountCache.billing = { ts: Date.now(), html };
                 el.innerHTML = html;
             } catch (e) {
-                el.innerHTML = `<div class="status error">加载失败: ${e.message}</div>`;
+                console.error('Failed to load billing:', e);
+                el.innerHTML = '<div class="status error">加载失败: ' + e.message + '<br><button class="btn btn-sm" onclick="loadAccountBilling()" style="margin-top: 8px;">重试</button></div>';
+            }
+        }
+        async function loadAccountUsage(force = false) {
+            const el = document.getElementById('accountUsageContent');
+            if (!el) return;
+            const window_size = document.getElementById('accountUsageWindow')?.value || 'month';
+            const key = window_size;
+            if (!force) {
+                const cached = accountCache.usage[key];
+                if (cached && cached.html && isFresh(cached.ts)) {
+                    el.innerHTML = cached.html;
+                    return;
+                }
+            }
+            el.innerHTML = '<div class="loading">加载中...</div>';
+            try {
+                const res = await fetch('/api/account/usage?window_size=' + window_size + (force ? '&force=1' : ''), { headers: getAuthHeaders() });
+                if (!res.ok) throw new Error('加载失败');
+                const data = await res.json();
+                console.log('Usage data:', data);
+                
+                let html = '<div style="display: grid; gap: 16px;">';
+                
+                // 总 tokens 显示
+                const totalTokens = data.total_tokens || 0;
+                html += '<div style="text-align: center; padding: 20px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
+                html += '<div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">LLM Gateway + LeMUR</div>';
+                html += '<div style="font-size: 36px; font-weight: bold; color: var(--text-color);">' + totalTokens.toLocaleString() + '</div>';
+                html += '<div style="font-size: 14px; color: var(--text-secondary);">Total tokens</div>';
+                html += '</div>';
+                
+                // 归类并复刻使用量分布与列表
+                if (data.by_model && data.by_model.length > 0) {
+                    const models = [...data.by_model];
+                    function vendorOf(name) {
+                        const n = (name || '').toLowerCase();
+                        if (n.includes('gpt')) return 'GPT';
+                        if (n.includes('gemini')) return 'Gemini';
+                        if (n.includes('claude')) return 'Claude';
+                        return 'Other';
+                    }
+                    const vendorTotals = {};
+                    models.forEach(m => { const v = vendorOf(m.model); vendorTotals[v] = (vendorTotals[v] || 0) + (m.tokens || 0); });
+                    const vendorsSorted = Object.keys(vendorTotals).sort((a,b)=>vendorTotals[b]-vendorTotals[a]);
+                    const groups = vendorsSorted.map(v => ({ vendor: v, items: models.filter(m=>vendorOf(m.model)===v).sort((a,b)=>b.tokens-a.tokens) }));
+                    const palette = {
+                        'GPT': ['#1e88e5','#1565c0','#64b5f6','#0d47a1'],
+                        'Gemini': ['#00bcd4','#26c6da','#80deea','#4dd0e1'],
+                        'Claude': ['#ff7043','#fb8c00','#f4511e','#ff9800'],
+                        'Other': ['#9c27b0','#ab47bc','#8e24aa','#ba68c8']
+                    };
+                    const colorMap = {};
+                    groups.forEach(g => { g.items.forEach((it, idx)=>{ const c = it.color || (palette[g.vendor] || palette['Other'])[idx % (palette[g.vendor] || palette['Other']).length]; colorMap[it.model] = c; }); });
+                    html += '<div style="padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
+                    html += '<h4 style="margin-bottom: 12px; color: var(--text-color);">使用量分布</h4>';
+                    html += '<div style="display: flex; height: 6px; border-radius: 4px; overflow: hidden; margin-bottom: 16px;">';
+                    groups.forEach(function(group){
+                        group.items.forEach(function(item){
+                            const percentage = totalTokens > 0 ? (item.tokens / totalTokens) * 100 : 0;
+                            const color = colorMap[item.model];
+                            html += '<div style="width:' + percentage + '%; background:' + color + ';"></div>';
+                        });
+                    });
+                    html += '</div>';
+                    html += '</div>';
+
+                    html += '<div style="padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
+                    html += '<h4 style="margin-bottom: 12px; color: var(--text-color);">按模型分类</h4>';
+                    groups.forEach(function(group){
+                        html += '<div style="font-weight:600; color: var(--text-secondary); margin:8px 0;">' + group.vendor + '</div>';
+                        group.items.forEach(function(item){
+                            const color = colorMap[item.model];
+                            const percentage = totalTokens > 0 ? ((item.tokens / totalTokens) * 100).toFixed(1) : 0;
+                            html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee;">';
+                            html += '<div style="display: flex; align-items: center; flex: 1;">';
+                            html += '<span style="width: 12px; height: 12px; border-radius: 50%; background: ' + color + '; margin-right: 8px; flex-shrink: 0;"></span>';
+                            html += '<span style="word-break: break-word;">' + item.model + '</span>';
+                            html += '</div>';
+                            html += '<div style="text-align: right; margin-left: 12px; white-space: nowrap;">';
+                            html += '<span style="font-weight: bold;">' + item.tokens.toLocaleString() + '</span>';
+                            html += '<span style="color: var(--text-secondary); margin-left: 4px;">tokens</span>';
+                            html += '<span style="color: var(--text-muted); margin-left: 8px;">(' + percentage + '%)</span>';
+                            html += '</div>';
+                            html += '</div>';
+                        });
+                    });
+                    html += '</div>';
+                } else if (data.items && data.items.length > 0) {
+                    html += '<table class="table" style="width: 100%;"><thead><tr><th>日期</th><th>产品</th><th>模型</th><th>使用量</th></tr></thead><tbody>';
+                    data.items.forEach(function(item) {
+                        html += '<tr><td>' + (item.date || '-') + '</td><td>' + (item.product || '-') + '</td><td>' + (item.model || '-') + '</td><td>' + (item.usage || item.tokens || 0) + ' ' + (item.unit || 'tokens') + '</td></tr>';
+                    });
+                    html += '</tbody></table>';
+                } else if (totalTokens === 0) {
+                    html += '<div class="status info">暂无使用量数据</div>';
+                }
+                
+                // 显示调试信息（如果有）
+                if (data.debug_info && Object.keys(data.debug_info).length > 0) {
+                    console.log('Debug info:', data.debug_info);
+                }
+                
+                // 显示错误信息
+                if (data.error) {
+                    html += '<div class="status warning" style="margin-top: 12px;">注意: ' + data.error + '</div>';
+                }
+                
+                html += '</div>';
+                accountCache.usage[key] = { ts: Date.now(), html };
+                el.innerHTML = html;
+            } catch (e) {
+                console.error('Failed to load usage:', e);
+                el.innerHTML = '<div class="status error">加载失败: ' + e.message + '<br><button class="btn btn-sm" onclick="loadAccountUsage()" style="margin-top: 8px;">重试</button></div>';
             }
         }
 
         // 加载成本数据
-        async function loadAccountCost() {
+        async function loadAccountCost(force = false) {
             const el = document.getElementById('accountCostContent');
             if (!el) return;
-            el.innerHTML = '<div class="loading">加载中...</div>';
             const window_size = document.getElementById('accountCostWindow')?.value || 'month';
             const group_by = document.getElementById('accountCostGroupBy')?.value || 'model';
+            const key = `${window_size}|${group_by}`;
+            if (!force) {
+                const cached = accountCache.cost[key];
+                if (cached && cached.html && isFresh(cached.ts)) {
+                    el.innerHTML = cached.html;
+                    return;
+                }
+            }
+            el.innerHTML = '<div class="loading">加载中...</div>';
             try {
-                const res = await fetch(`/api/account/cost?window_size=${window_size}&group_by=${group_by}`, { headers: getAuthHeaders() });
+                const res = await fetch('/api/account/cost?window_size=' + window_size + '&group_by=' + group_by + (force ? '&force=1' : ''), { headers: getAuthHeaders() });
                 if (!res.ok) throw new Error('加载失败');
                 const data = await res.json();
+                console.log('Cost data:', data);
+                
                 let html = '<div style="display: grid; gap: 16px;">';
-                if (data.total_cost !== undefined) {
-                    html += `<div style="font-size: 24px; font-weight: bold; color: #dc3545;">总成本: $${data.total_cost.toFixed(5)}</div>`;
+                let hasAnyData = false;
+                
+                // 总成本显示
+                const totalCost = data.total_cost || 0;
+                html += '<div class="summary-card">';
+                html += '<div class="summary-title" style="margin-bottom: 8px;">Summary (Last 30 days)</div>';
+                html += '<div class="summary-sub">Total spend across account</div>';
+                html += '<div class="summary-value">$' + totalCost.toFixed(5) + '</div>';
+                html += '</div>';
+                if (totalCost > 0) hasAnyData = true;
+                
+                // 按服务分类的成本
+                if (data.by_service && data.by_service.length > 0) {
+                    hasAnyData = true;
+                    html += '<div style="padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
+                    html += '<h4 style="margin-bottom: 12px; color: var(--text-color);">Cost Breakdown (Last 30 days)</h4>';
+                    
+                    // 进度条
+                    html += '<div style="height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; display: flex; margin-bottom: 16px; width: 100%;">';
+                    const colors = ['#4caf50', '#2196f3', '#ff9800', '#9c27b0'];
+                    data.by_service.forEach(function(item, index) {
+                        const percentage = totalCost > 0 ? (item.cost / totalCost) * 100 : 0;
+                        html += '<div style="width: ' + percentage + '%; background: ' + colors[index % colors.length] + ';"></div>';
+                    });
+                    html += '</div>';
+                    
+                    // 服务列表
+                    html += '<div class="responsive-grid">';
+                    data.by_service.forEach(function(item, index) {
+                        html += '<div class="responsive-item" style="padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--card-bg);">';
+                        html += '<div class="cost-label" style="font-size: 12px; color: var(--text-secondary);">' + item.service + '</div>';
+                        html += '<div style="font-size: 20px; font-weight: bold; color: ' + colors[index % colors.length] + ';">$' + item.cost.toFixed(2) + '</div>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                    html += '</div>';
                 }
-                if (data.items && data.items.length > 0) {
-                    html += '<table class="table" style="width: 100%;"><thead><tr><th>日期</th><th>模型</th><th>输入 Tokens</th><th>输出 Tokens</th><th>成本</th></tr></thead><tbody>';
-                    data.items.forEach(item => {
-                        html += `<tr><td>${item.date || '-'}</td><td>${item.model || '-'}</td><td>${item.input_tokens || 0}</td><td>${item.output_tokens || 0}</td><td>$${(item.cost || 0).toFixed(5)}</td></tr>`;
+                
+                // 消费趋势
+                if (data.spend_trend && data.spend_trend.length > 0) {
+                    hasAnyData = true;
+                    html += '<div style="padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
+                    html += '<h4 style="margin-bottom: 12px; color: var(--text-color);">消费趋势</h4>';
+                    const max = Math.max.apply(null, data.spend_trend.map(function(s){ return (s.amount || 0); }));
+                    html += '<div>';
+                    data.spend_trend.forEach(function(item){
+                        const pct = max > 0 ? (item.amount || 0) / max * 100 : 0;
+                        html += '<div style="display: flex; align-items: center; gap: 10px; margin: 6px 0;">';
+                        html += '<div style="width: 90px; color: var(--text-secondary); font-size: 12px;">' + (item.date || '-') + '</div>';
+                        html += '<div style="flex: 1; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">';
+                        html += '<div style="width: ' + pct + '%; height: 100%; background: #4caf50;"></div>';
+                        html += '</div>';
+                        html += '<div style="width: 80px; text-align: right; font-size: 12px; color: var(--text-color);">$' + (item.amount || 0).toFixed(5) + '</div>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                    html += '</div>';
+                }
+                
+                // 按模型分类的成本
+                if (data.by_model && data.by_model.length > 0) {
+                    hasAnyData = true;
+                    html += '<div style="padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
+                    html += '<h4 style="margin-bottom: 12px; color: var(--text-color);">按模型分类</h4>';
+                    html += '<div style="overflow-x: auto;">';
+                    html += '<table class="table" style="width: 100%; min-width: 360px;"><thead><tr><th>模型</th><th>输入成本</th><th>输出成本</th><th>总成本</th></tr></thead><tbody>';
+                    data.by_model.forEach(function(item) {
+                        html += '<tr><td>' + (item.model || '-') + '</td><td>$' + (item.input_cost || 0).toFixed(5) + '</td><td>$' + (item.output_cost || 0).toFixed(5) + '</td><td>$' + (item.cost || 0).toFixed(5) + '</td></tr>';
                     });
                     html += '</tbody></table>';
-                } else {
+                    html += '</div>';
+                    html += '</div>';
+                }
+                if (data.items && data.items.length > 0) {
+                    hasAnyData = true;
+                    html += '<div style="overflow-x: auto;">';
+                    html += '<table class="table" style="width: 100%; min-width: 420px;"><thead><tr><th>日期</th><th>模型</th><th>输入成本</th><th>输出成本</th><th>总成本</th></tr></thead><tbody>';
+                    data.items.forEach(function(item) {
+                        html += '<tr><td>' + (item.date || '-') + '</td><td>' + (item.model || '-') + '</td><td>$' + (item.input_cost || 0).toFixed(5) + '</td><td>$' + (item.output_cost || 0).toFixed(5) + '</td><td>$' + (item.cost || 0).toFixed(5) + '</td></tr>';
+                    });
+                    html += '</tbody></table>';
+                    html += '</div>';
+                }
+                
+                if (!hasAnyData) {
                     html += '<div class="status info">暂无成本数据</div>';
                 }
+                
+                if (data.error) {
+                    html += '<div class="status warning" style="margin-top: 12px;">注意: ' + data.error + '</div>';
+                }
+                
                 html += '</div>';
+                accountCache.cost[key] = { ts: Date.now(), html };
                 el.innerHTML = html;
             } catch (e) {
-                el.innerHTML = `<div class="status error">加载失败: ${e.message}</div>`;
+                console.error('Failed to load cost:', e);
+                el.innerHTML = '<div class="status error">加载失败: ' + e.message + '<br><button class="btn btn-sm" onclick="loadAccountCost()" style="margin-top: 8px;">重试</button></div>';
             }
         }
-
         // 导出成本数据
         async function exportAccountCost(format) {
             const window_size = document.getElementById('accountCostWindow')?.value || 'month';
@@ -6310,20 +6611,52 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         }
 
         // 加载费率数据
-        async function loadAccountRates() {
+        async function loadAccountRates(force = false) {
             const el = document.getElementById('accountRatesContent');
             if (!el) return;
+            if (!force && accountCache.rates.html && isFresh(accountCache.rates.ts)) {
+                el.innerHTML = accountCache.rates.html;
+                return;
+            }
             el.innerHTML = '<div class="loading">加载中...</div>';
             const region = document.getElementById('accountRatesRegion')?.value || 'US';
             try {
-                const res = await fetch(`/api/account/rates?region=${region}`, { headers: getAuthHeaders() });
+                const res = await fetch(`/api/account/rates?region=${region}` + (force ? '&force=1' : ''), { headers: getAuthHeaders() });
                 if (!res.ok) throw new Error('加载失败');
                 const data = await res.json();
                 let html = '<div style="display: grid; gap: 20px;">';
                 
+                // LLM Gateway - 合并输入/输出两列并优先展示
+                if ((data.llm_gateway_input && data.llm_gateway_input.length > 0) || (data.llm_gateway_output && data.llm_gateway_output.length > 0)) {
+                    const map = {};
+                    (data.llm_gateway_input || []).forEach(item => {
+                        const k = item.model || '-';
+                        if (!map[k]) map[k] = { in: 0, out: 0, unit: item.unit || '' };
+                        map[k].in = item.rate || 0;
+                        map[k].unit = item.unit || map[k].unit || '';
+                    });
+                    (data.llm_gateway_output || []).forEach(item => {
+                        const k = item.model || '-';
+                        if (!map[k]) map[k] = { in: 0, out: 0, unit: item.unit || '' };
+                        map[k].out = item.rate || 0;
+                        map[k].unit = item.unit || map[k].unit || '';
+                    });
+                    const rows = Object.keys(map).map(k => ({ model: k, in: map[k].in, out: map[k].out, unit: map[k].unit })).sort((a,b)=>{
+                        function vendor(n){ const s=(n||'').toLowerCase(); if(s.includes('gpt'))return 0; if(s.includes('claude'))return 1; if(s.includes('gemini'))return 2; return 3; }
+                        const v = vendor(a.model)-vendor(b.model); if(v!==0) return v; return (b.out||0)-(a.out||0);
+                    });
+                    html += '<div style="padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
+                    html += '<h5 style="color: var(--text-color);">LLM Gateway</h5>';
+                    html += '<table class="table" style="width: 100%;"><thead><tr><th>模型</th><th>输入</th><th>输出</th><th>单位</th></tr></thead><tbody>';
+                    rows.forEach(r => {
+                        html += `<tr><td>${r.model}</td><td>$${(r.in||0).toFixed(2)}</td><td>$${(r.out||0).toFixed(2)}</td><td>${r.unit||'-'}</td></tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                }
+                
                 // Speech-to-Text
                 if (data.speech_to_text && data.speech_to_text.length > 0) {
-                    html += '<div><h5>Speech-to-Text</h5><table class="table" style="width: 100%;"><thead><tr><th>模型</th><th>费率</th></tr></thead><tbody>';
+                    html += '<div style="padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);"><h5 style="color: var(--text-color);">Speech-to-Text</h5><table class="table" style="width: 100%;"><thead><tr><th>模型</th><th>费率</th></tr></thead><tbody>';
                     data.speech_to_text.forEach(item => {
                         html += `<tr><td>${item.model}${item.beta ? ' <span style="color: #ffc107; font-size: 11px;">Beta</span>' : ''}</td><td>$${item.rate} / ${item.unit}</td></tr>`;
                     });
@@ -6332,27 +6665,9 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 
                 // Streaming
                 if (data.streaming && data.streaming.length > 0) {
-                    html += '<div><h5>Streaming</h5><table class="table" style="width: 100%;"><thead><tr><th>模型</th><th>费率</th></tr></thead><tbody>';
+                    html += '<div style="padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);"><h5 style="color: var(--text-color);">Streaming</h5><table class="table" style="width: 100%;"><thead><tr><th>模型</th><th>费率</th></tr></thead><tbody>';
                     data.streaming.forEach(item => {
                         html += `<tr><td>${item.model}${item.beta ? ' <span style="color: #ffc107; font-size: 11px;">Beta</span>' : ''}</td><td>$${item.rate} / ${item.unit}</td></tr>`;
-                    });
-                    html += '</tbody></table></div>';
-                }
-                
-                // LLM Gateway Input
-                if (data.llm_gateway_input && data.llm_gateway_input.length > 0) {
-                    html += '<div><h5>LLM Gateway (Input)</h5><table class="table" style="width: 100%;"><thead><tr><th>模型</th><th>费率</th></tr></thead><tbody>';
-                    data.llm_gateway_input.forEach(item => {
-                        html += `<tr><td>${item.model}</td><td>$${item.rate} / ${item.unit}</td></tr>`;
-                    });
-                    html += '</tbody></table></div>';
-                }
-                
-                // LLM Gateway Output
-                if (data.llm_gateway_output && data.llm_gateway_output.length > 0) {
-                    html += '<div><h5>LLM Gateway (Output)</h5><table class="table" style="width: 100%;"><thead><tr><th>模型</th><th>费率</th></tr></thead><tbody>';
-                    data.llm_gateway_output.forEach(item => {
-                        html += `<tr><td>${item.model}</td><td>$${item.rate} / ${item.unit}</td></tr>`;
                     });
                     html += '</tbody></table></div>';
                 }
@@ -6367,6 +6682,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 }
                 
                 html += '</div>';
+                accountCache.rates = { ts: Date.now(), html };
                 el.innerHTML = html;
             } catch (e) {
                 el.innerHTML = `<div class="status error">加载失败: ${e.message}</div>`;
@@ -6376,6 +6692,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         // 初始化账户管理标签页
         function initAccountTab() {
             checkAccountSession();
+            startAccountAutoRefresh();
         }
     </script>
     </body>
