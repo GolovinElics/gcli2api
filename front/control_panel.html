@@ -6659,11 +6659,16 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     });
                     html += '<div style="padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
                     html += '<h5 style="color: var(--text-color);">LLM Gateway</h5>';
-                    html += '<table class="table" style="width: 100%;"><thead><tr><th>模型</th><th>输入</th><th>输出</th><th>单位</th></tr></thead><tbody>';
+                    html += '<div style="overflow-x:auto;">';
+                    html += '<table class="table" style="width: 100%; min-width: 460px;"><thead><tr><th>模型</th><th>输入</th><th>输出</th><th>单位</th></tr></thead><tbody>';
                     rows.forEach(r => {
-                        html += `<tr><td>${r.model}</td><td>$${(r.in||0).toFixed(2)}</td><td>$${(r.out||0).toFixed(2)}</td><td>${r.unit||'-'}</td></tr>`;
+                        const inTxt = (typeof r.in === 'number') ? ('$' + r.in.toFixed(2)) : '-';
+                        const outTxt = (typeof r.out === 'number') ? ('$' + r.out.toFixed(2)) : '-';
+                        html += `<tr><td style="word-break: break-word;">${r.model}</td><td>${inTxt}</td><td>${outTxt}</td><td>${r.unit||'-'}</td></tr>`;
                     });
-                    html += '</tbody></table></div>';
+                    html += '</tbody></table>';
+                    html += '</div>';
+                    html += '</div>';
                 }
                 
                 // Speech-to-Text

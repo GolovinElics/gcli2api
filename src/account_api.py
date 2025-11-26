@@ -505,25 +505,39 @@ async def get_billing_info(force: bool = False) -> Dict[str, Any]:
     start_date = end_date - timedelta(days=30)
     
     try:
-        # 直接解析 RSC 数据（跳过不存在的 API 端点）
-        # AssemblyAI Dashboard 使用 React Server Components，数据嵌入在页面中
-        billing_page = await _make_dashboard_request(
-            "GET",
-            "/dashboard/account/billing",
-            params={"_rsc": "1"}
-        )
+        billing_data = None
+        for params in [
+            {"view": "US", "_rsc": "10s30"},
+            {"_rsc": "1"},
+            {"_rsc": "1mzsd"},
+            {}
+        ]:
+            page = await _make_dashboard_request(
+                "GET",
+                "/dashboard/account/billing",
+                params=params
+            )
+            if page and "raw" in page:
+                raw_text = page["raw"].strip()
+                if raw_text and not raw_text.startswith("<!DOCTYPE"):
+                    billing_data = page
+                    result.setdefault("debug_info", {})
+                    result["debug_info"]["source_params"] = params
+                    break
         
-        if billing_page:
-            parsed = _parse_billing_rsc_data(billing_page)
+        if billing_data:
+            parsed = _parse_billing_rsc_data(billing_data)
             result["balance"] = parsed.get("balance") or 0.0
             result["total_spend_30_days"] = parsed.get("total_spend_30_days") or 0.0
             result["spend_trend"] = parsed.get("spend_trend", [])
+            if parsed.get("by_service"):
+                result["cost_breakdown"] = {s.get("service"): s.get("cost", 0.0) for s in parsed.get("by_service", [])}
             log.info(f"Parsed billing from RSC: balance=${result['balance']}, spend=${result['total_spend_30_days']}")
             
             # 如果解析失败，记录原始数据用于调试
             if result["balance"] == 0.0 and result["total_spend_30_days"] == 0.0:
-                if "raw" in billing_page:
-                    raw_sample = billing_page["raw"][:500] if len(billing_page.get("raw", "")) > 500 else billing_page.get("raw", "")
+                if "raw" in billing_data:
+                    raw_sample = billing_data["raw"][:500] if len(billing_data.get("raw", "")) > 500 else billing_data.get("raw", "")
                     log.warning(f"RSC parsing returned no data. Raw sample: {raw_sample}")
                     result["debug_info"] = "RSC parsing returned no data"
     
@@ -750,23 +764,26 @@ async def get_cost_data(
 
 @router.get("/rates")
 async def get_rates(region: str = "US", force: bool = False) -> Dict[str, Any]:
-    """
-    获取费率信息
-    
-    Args:
-        region: 区域 (US, Europe)
-    
-    Returns:
-        各产品和模型的费率信息
-    """
-    # 费率数据（基于 AssemblyAI 官方定价）
-    # 这些数据可以从配置文件或数据库加载
     cache_key = f"rates:{region}"
     cached = None if force else _cache_get(cache_key)
     if cached:
         return cached
 
-    rates = {
+    parsed = {}
+    try:
+        # 优先从 billing 页面获取费率数据（包含完整的费率表格）
+        rsc = await _make_dashboard_request(
+            "GET",
+            "/dashboard/account/billing",
+            params={"view": region, "_rsc": "10s30"},
+        )
+        parsed = _parse_rates_rsc_data(rsc)
+        log.info(f"Parsed rates from billing API: {len(parsed.get('llm_gateway_input', []))} input, {len(parsed.get('llm_gateway_output', []))} output")
+    except Exception as e:
+        log.warning(f"Failed to fetch rates from API: {e}")
+        parsed = {}
+
+    fallback = {
         "region": region,
         "speech_to_text": [
             {"model": "Slam-1", "rate": 0.27, "unit": "hour", "beta": True},
@@ -790,40 +807,58 @@ async def get_rates(region: str = "US", force: bool = False) -> Dict[str, Any]:
             {"feature": "Auto Chapters", "rate": 0.10, "unit": "hour"},
         ],
         "llm_gateway_input": [
-            {"model": "GPT-5", "rate": 1.25, "unit": "1M tokens"},
-            {"model": "GPT-4.1", "rate": 2.00, "unit": "1M tokens"},
-            {"model": "GPT-4.1 mini", "rate": 0.40, "unit": "1M tokens"},
-            {"model": "GPT-4.1 nano", "rate": 0.10, "unit": "1M tokens"},
+            {"model": "GPT OSS 120b", "rate": 0.15, "unit": "1M tokens"},
             {"model": "Claude Opus 4", "rate": 15.00, "unit": "1M tokens"},
+            {"model": "GPT-5", "rate": 1.25, "unit": "1M tokens"},
+            {"model": "GPT-5 Mini", "rate": 0.25, "unit": "1M tokens"},
+            {"model": "Claude Haiku 4.5", "rate": 1.00, "unit": "1M tokens"},
+            {"model": "GPT OSS 20b", "rate": 0.07, "unit": "1M tokens"},
+            {"model": "GPT-5 Nano", "rate": 0.05, "unit": "1M tokens"},
+            {"model": "Claude 3.5 Haiku", "rate": 0.80, "unit": "1M tokens"},
+            {"model": "Claude Sonnet 4.5", "rate": 3.00, "unit": "1M tokens"},
+            {"model": "ChatGPT 4o Latest", "rate": 5.00, "unit": "1M tokens"},
+            {"model": "GPT-4.1", "rate": 2.00, "unit": "1M tokens"},
+            {"model": "Gemini 3 Pro Preview <200k Tokens", "rate": 2.00, "unit": "1M tokens"},
             {"model": "Claude Sonnet 4", "rate": 3.00, "unit": "1M tokens"},
-            {"model": "Claude Sonnet 3.5 v2", "rate": 3.00, "unit": "1M tokens"},
-            {"model": "Claude Haiku 3.5", "rate": 0.80, "unit": "1M tokens"},
+            {"model": "Claude 3 Haiku", "rate": 0.25, "unit": "1M tokens"},
+            {"model": "Gemini 2.5 Flash Lite", "rate": 0.10, "unit": "1M tokens"},
             {"model": "Gemini 2.5 Pro", "rate": 1.25, "unit": "1M tokens"},
-            {"model": "Gemini 2.5 Flash", "rate": 0.15, "unit": "1M tokens"},
-            {"model": "Gemini 2.0 Flash", "rate": 0.10, "unit": "1M tokens"},
         ],
         "llm_gateway_output": [
             {"model": "GPT-5", "rate": 10.00, "unit": "1M tokens"},
             {"model": "GPT-4.1", "rate": 8.00, "unit": "1M tokens"},
             {"model": "GPT-4.1 mini", "rate": 1.60, "unit": "1M tokens"},
             {"model": "GPT-4.1 nano", "rate": 0.40, "unit": "1M tokens"},
-            {"model": "Claude Opus 4", "rate": 75.00, "unit": "1M tokens"},
-            {"model": "Claude Sonnet 4", "rate": 15.00, "unit": "1M tokens"},
-            {"model": "Claude Sonnet 3.5 v2", "rate": 15.00, "unit": "1M tokens"},
-            {"model": "Claude Haiku 3.5", "rate": 4.00, "unit": "1M tokens"},
+            {"model": "ChatGPT 4o Latest", "rate": 15.00, "unit": "1M tokens"},
+            {"model": "GPT-5 Mini", "rate": 2.00, "unit": "1M tokens"},
+            {"model": "GPT-5 Nano", "rate": 0.40, "unit": "1M tokens"},
+            {"model": "GPT OSS 120b", "rate": 0.60, "unit": "1M tokens"},
+            {"model": "GPT OSS 20b", "rate": 0.30, "unit": "1M tokens"},
+            {"model": "Gemini 3 Pro Preview <200k Tokens", "rate": 12.00, "unit": "1M tokens"},
+            {"model": "Gemini 3 Pro Preview >200k Tokens", "rate": 18.00, "unit": "1M tokens"},
+            {"model": "Gemini 2.5 Flash", "rate": 2.50, "unit": "1M tokens"},
+            {"model": "Gemini 2.5 Flash Lite", "rate": 0.40, "unit": "1M tokens"},
             {"model": "Gemini 2.5 Pro", "rate": 10.00, "unit": "1M tokens"},
-            {"model": "Gemini 2.5 Flash", "rate": 0.60, "unit": "1M tokens"},
-            {"model": "Gemini 2.0 Flash", "rate": 0.40, "unit": "1M tokens"},
+            {"model": "Claude Sonnet 4", "rate": 15.00, "unit": "1M tokens"},
+            {"model": "Claude 3.5 Haiku", "rate": 4.00, "unit": "1M tokens"},
+            {"model": "Claude 3 Haiku", "rate": 1.25, "unit": "1M tokens"},
+            {"model": "Claude Opus 4", "rate": 75.00, "unit": "1M tokens"},
         ],
         "notes": [
-            "* Beta models - pricing may change",
-            "Multi-channel audio is billed per channel",
             "LLM Gateway pricing is per million tokens",
         ],
     }
-    
-    _cache_set(cache_key, rates)
-    return rates
+
+    result = {"region": region}
+    result["speech_to_text"] = parsed.get("speech_to_text") or fallback["speech_to_text"]
+    result["streaming"] = parsed.get("streaming") or fallback["streaming"]
+    result["speech_understanding"] = parsed.get("speech_understanding") or fallback["speech_understanding"]
+    result["llm_gateway_input"] = parsed.get("llm_gateway_input") or fallback["llm_gateway_input"]
+    result["llm_gateway_output"] = parsed.get("llm_gateway_output") or fallback["llm_gateway_output"]
+    result["notes"] = fallback["notes"]
+
+    _cache_set(cache_key, result)
+    return result
 
 
 def _parse_rsc_data(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -891,6 +926,7 @@ def _parse_billing_rsc_data(data: Dict[str, Any]) -> Dict[str, Any]:
         "balance": None,
         "spend_trend": [],
         "total_spend_30_days": 0.0,
+        "by_service": [],
         "raw_parsed": False
     }
     
@@ -954,7 +990,30 @@ def _parse_billing_rsc_data(data: Dict[str, Any]) -> Dict[str, Any]:
                 log.debug(f"Failed to parse chart data: {e}")
                 continue
         
-        # 3. 计算 30 天总消费
+        # 3. 提取总额按服务分类（如果存在）
+        try:
+            m_total = re.search(r'"total":\s*\{([^}]+)\}', raw_text)
+            if m_total:
+                import json as _json
+                json_str = '{' + m_total.group(1) + '}'
+                total_obj = _json.loads(json_str)
+                by_service = []
+                for k, v in total_obj.items():
+                    name = str(k)
+                    try:
+                        amount = float(v)
+                    except Exception:
+                        amount = 0.0
+                    by_service.append({
+                        "service": name,
+                        "cost": amount,
+                    })
+                if by_service:
+                    result["by_service"] = by_service
+        except Exception:
+            pass
+
+        # 4. 计算 30 天总消费
         if result["spend_trend"]:
             result["total_spend_30_days"] = sum(
                 item.get("amount", 0.0) for item in result["spend_trend"]
@@ -1561,3 +1620,158 @@ async def _get_dashboard_client():
             transport=httpx.AsyncHTTPTransport(retries=2),
         )
     return _dashboard_client
+
+
+def _parse_rates_rsc_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    解析费率数据的 RSC 响应
+    
+    从 billing 页面的 RSC 数据中提取费率表格信息。
+    优先解析接口返回的数据，解析失败时返回空结果（由调用方使用 fallback）。
+    
+    Args:
+        data: 包含 'raw' 字段的 RSC 响应数据
+    
+    Returns:
+        解析后的费率数据，包含：
+        - speech_to_text: 语音转文本模型费率列表
+        - streaming: 流式语音转文本模型费率列表
+        - speech_understanding: 语音理解功能费率列表
+        - llm_gateway_input: LLM Gateway 输入 token 费率列表
+        - llm_gateway_output: LLM Gateway 输出 token 费率列表
+    """
+    import re
+    
+    if "raw" not in data:
+        return {}
+    
+    raw_text = data["raw"]
+    result = {
+        "speech_to_text": [],
+        "streaming": [],
+        "speech_understanding": [],
+        "llm_gateway_input": [],
+        "llm_gateway_output": [],
+    }
+    
+    try:
+        log.debug(f"Parsing rates RSC data from billing page, length: {len(raw_text)}")
+        
+        # 1. 首先找到所有分类的位置
+        stt_pos = raw_text.find('"children":"Speech-to-Text"')
+        streaming_pos = raw_text.find('"children":"Streaming Speech-to-Text"')
+        understanding_pos = raw_text.find('"children":"Speech Understanding"')
+        llm_input_pos = raw_text.find('"children":["LLM Gateway + LeMUR"," Input Tokens"]')
+        llm_output_pos = raw_text.find('"children":["LLM Gateway + LeMUR"," Output Tokens"]')
+        
+        log.debug(f"Category positions: STT={stt_pos}, Streaming={streaming_pos}, "
+                  f"Understanding={understanding_pos}, LLM Input={llm_input_pos}, LLM Output={llm_output_pos}")
+        
+        # 2. 查找所有费率条目
+        # 格式: "$$费率"," ",["$","span",null,{"children":[" / ","单位"]}]
+        rate_pattern = r'\"\$\$(\d+\.?\d*)\",\" \",\[\"[^\"]*\",\"span\",null,\{\"children\":\[\" / \",\"([^\"]+)\"\]'
+        rate_matches = list(re.finditer(rate_pattern, raw_text))
+        log.info(f"Found {len(rate_matches)} rate entries in billing RSC data")
+        
+        # 3. 对于每个费率，向前查找最近的模型名称
+        for rate_match in rate_matches:
+            rate_str = rate_match.group(1)
+            unit = rate_match.group(2)
+            rate_pos = rate_match.start()
+            
+            try:
+                rate = float(rate_str)
+            except ValueError:
+                continue
+            
+            # 向前查找最近的 "children":"模型名" (在表格单元格中)
+            search_start = max(0, rate_pos - 2000)
+            search_text = raw_text[search_start:rate_pos]
+            
+            # 查找最后一个 "children":"XXX" 模式
+            model_pattern = r'\"children\":\"([^\"]+)\"'
+            model_matches = list(re.finditer(model_pattern, search_text))
+            
+            if model_matches:
+                # 取最后一个匹配（最接近费率的）
+                model_name = model_matches[-1].group(1)
+                
+                # 过滤掉非模型名称
+                skip_names = ["Model", "Rate", "table-row", "table-header", "$undefined", 
+                              "rt-", "index-module", "style", "className", "ref", "scope",
+                              "Speech-to-Text", "Streaming Speech-to-Text", "Speech Understanding",
+                              "LLM Gateway + LeMUR", "Input Tokens", "Output Tokens"]
+                
+                should_skip = False
+                for skip in skip_names:
+                    if skip in model_name or model_name.startswith("$") or len(model_name) > 50:
+                        should_skip = True
+                        break
+                
+                if should_skip:
+                    continue
+                
+                clean_name = model_name.replace("*", "").strip()
+                
+                # 根据费率位置和单位判断分类
+                if "1M tokens" in unit:
+                    if llm_output_pos > 0 and rate_pos > llm_output_pos:
+                        result["llm_gateway_output"].append({
+                            "model": clean_name,
+                            "rate": rate,
+                            "unit": unit
+                        })
+                    else:
+                        result["llm_gateway_input"].append({
+                            "model": clean_name,
+                            "rate": rate,
+                            "unit": unit
+                        })
+                elif "hour" in unit:
+                    if understanding_pos > 0 and rate_pos > understanding_pos and (llm_input_pos < 0 or rate_pos < llm_input_pos):
+                        result["speech_understanding"].append({
+                            "feature": clean_name,
+                            "rate": rate,
+                            "unit": unit
+                        })
+                    elif streaming_pos > 0 and rate_pos > streaming_pos and (understanding_pos < 0 or rate_pos < understanding_pos):
+                        result["streaming"].append({
+                            "model": clean_name,
+                            "rate": rate,
+                            "unit": unit
+                        })
+                    elif stt_pos > 0 and rate_pos > stt_pos and (streaming_pos < 0 or rate_pos < streaming_pos):
+                        result["speech_to_text"].append({
+                            "model": clean_name,
+                            "rate": rate,
+                            "unit": unit
+                        })
+        
+        # 4. 去重
+        for key in result:
+            seen = set()
+            unique = []
+            for item in result[key]:
+                name = item.get("model") or item.get("feature")
+                if name not in seen:
+                    seen.add(name)
+                    unique.append(item)
+            result[key] = unique
+        
+        # 5. 按费率排序
+        result["llm_gateway_input"].sort(key=lambda x: x.get("rate", 0), reverse=True)
+        result["llm_gateway_output"].sort(key=lambda x: x.get("rate", 0), reverse=True)
+        result["speech_to_text"].sort(key=lambda x: x.get("rate", 0), reverse=True)
+        result["streaming"].sort(key=lambda x: x.get("rate", 0), reverse=True)
+        result["speech_understanding"].sort(key=lambda x: x.get("rate", 0), reverse=True)
+        
+        log.info(f"Parsed rates from billing: {len(result['speech_to_text'])} STT, {len(result['streaming'])} streaming, "
+                 f"{len(result['speech_understanding'])} understanding, {len(result['llm_gateway_input'])} LLM input, "
+                 f"{len(result['llm_gateway_output'])} LLM output")
+        
+    except Exception as e:
+        log.error(f"Failed to parse rates RSC data: {e}")
+        import traceback
+        log.error(f"Traceback: {traceback.format_exc()}")
+    
+    return result
