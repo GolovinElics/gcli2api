@@ -868,7 +868,30 @@
             gap: 6px;
             border-bottom: 1px solid #e5e7eb;
             margin-bottom: 20px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) transparent;
+        }
+        
+        /* 标签页滚动条样式 */
+        .tabs::-webkit-scrollbar {
+            height: 4px;
+        }
+        
+        .tabs::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .tabs::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 2px;
+        }
+        
+        .tabs::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
         }
 
         .tab {
@@ -881,6 +904,8 @@
             font-size: 16px;
             color: var(--text-secondary);
             transition: background-color 0.3s ease, color 0.3s ease;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .tab:hover {
@@ -903,9 +928,29 @@
             display: block;
         }
 
+        @media (max-width: 768px) {
+            .tabs { 
+                gap: 4px;
+                padding-bottom: 4px;
+            }
+            .tab { 
+                padding: 10px 16px; 
+                font-size: 14px;
+            }
+        }
+        
         @media (max-width: 480px) {
-            .tabs { gap: 4px; }
-            .tab { padding: 8px 12px; font-size: 14px; }
+            .tabs { 
+                gap: 3px;
+                margin-left: -12px;
+                margin-right: -12px;
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+            .tab { 
+                padding: 8px 12px; 
+                font-size: 13px;
+            }
         }
 
         /* 成本页移动端响应式 */
@@ -2581,11 +2626,11 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:16px">
                             <div>
                                 <label for="playgroundModel">模型</label>
-                                <select id="playgroundModel" class="config-input" style="width:100%" onchange="updateMaxTokensLimit(this.value)"></select>
+                                <select id="playgroundModel" class="config-input" style="width:100%" onchange="updateMaxTokensLimit(this.value); updateRequestPreview();"></select>
                             </div>
                             <div>
                                 <label for="playgroundApiKey">API Key（可选）</label>
-                                <select id="playgroundApiKey" class="config-input" style="width:100%">
+                                <select id="playgroundApiKey" class="config-input" style="width:100%" onchange="updateRequestPreview()">
                                     <option value="">自动选择（默认）</option>
                                 </select>
                                 <small class="config-note">留空则使用系统自动轮换</small>
@@ -2614,7 +2659,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         <div class="toggle-wrap" style="margin-bottom: 20px;">
                             <span>stream</span>
                             <label class="switch">
-                                <input type="checkbox" id="playgroundStream" />
+                                <input type="checkbox" id="playgroundStream" onchange="updateRequestPreview()" />
                                 <span class="slider"></span>
                             </label>
                         </div>
@@ -2643,15 +2688,15 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     </div>
                     <div id="playgroundToolsWrap" style="margin-top:8px; display:block">
                         <div class="form-group">
-                            <textarea id="playgroundToolsJson" class="config-input" placeholder='[{"type":"function","function":{"name":"get_weather","parameters":{"type":"object","properties":{"city":{"type":"string"}}}}}]' style="min-height:100px"></textarea>
+                            <textarea id="playgroundToolsJson" class="config-input" placeholder='[{"type":"function","function":{"name":"get_weather","parameters":{"type":"object","properties":{"city":{"type":"string"}}}}}]' style="min-height:100px" oninput="updateRequestPreview()"></textarea>
                             <small class="config-note">留空则不启用工具调用；内容需为合法 JSON</small>
                         </div>
                     </div>
                 </div>
-                <!-- 请求预览区域（支持折叠） -->
-                <div class="config-group" id="requestPreviewSection" style="display: none;">
+                <!-- 请求预览区域（支持折叠，默认显示） -->
+                <div class="config-group" id="requestPreviewSection">
                     <div onclick="toggleSection('requestPreviewWrap')" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; padding:6px 8px; background:var(--card-bg); border-radius:6px">
-                        <span>📋 请求预览</span>
+                        <span>📋 请求预览（实时）</span>
                         <span id="requestPreviewToggle">▼</span>
                     </div>
                     <div id="requestPreviewWrap" style="margin-top:12px; display:block">
@@ -5571,6 +5616,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             const slider = document.getElementById('playgroundTemperature');
             const percent = (value / 2) * 100;
             slider.style.background = `linear-gradient(to right, #4285f4 0%, #4285f4 ${percent}%, #e0e0e0 ${percent}%, #e0e0e0 100%)`;
+            // 实时更新预览
+            updateRequestPreview();
         }
 
         function updateTemperatureSlider(value) {
@@ -5585,6 +5632,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             const max = parseInt(slider.max);
             const percent = (value / max) * 100;
             slider.style.background = `linear-gradient(to right, #4285f4 0%, #4285f4 ${percent}%, #e0e0e0 ${percent}%, #e0e0e0 100%)`;
+            // 实时更新预览
+            updateRequestPreview();
         }
 
         function updateMaxTokensSlider(value) {
@@ -5652,6 +5701,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 clearMessages();
                 addMessageRow('system','You are a helpful assistant.');
                 addMessageRow('user','hello');
+                // 初始化后立即显示预览
+                await updateRequestPreview();
                 showStatus('操练场已就绪','success');
             }catch(e){
                 showStatus('加载模型失败: '+e.message,'error');
@@ -5751,17 +5802,23 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             roleSel.style = 'width:140px; min-width:140px; height:32px; padding:2px 8px';
             ['system','user','assistant','tool'].forEach(r=>{ const o=document.createElement('option'); o.value=r; o.textContent=r; roleSel.appendChild(o); });
             roleSel.value = role;
+            // 添加 onchange 事件监听
+            roleSel.onchange = () => updateRequestPreview();
             const ta = document.createElement('textarea');
             ta.className = 'config-input';
             ta.style = 'min-height:80px; flex:1; resize:vertical';
             ta.value = content || '';
+            // 添加 oninput 事件监听（实时更新）
+            ta.oninput = () => updateRequestPreview();
             const del = document.createElement('button');
             del.className = 'btn';
             del.style = 'background:#dc3545; padding:4px 8px; font-size:12px; min-width:auto; height:32px; width:auto; flex:0 0 auto';
             del.textContent = '删除';
-            del.onclick = ()=>{ row.remove(); };
+            del.onclick = ()=>{ row.remove(); updateRequestPreview(); };
             row.appendChild(roleSel); row.appendChild(ta); row.appendChild(del);
             wrap.appendChild(row);
+            // 添加后更新预览
+            updateRequestPreview();
         }
 
         function clearMessages(){
@@ -5771,6 +5828,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             const raw = document.getElementById('playgroundRawJson');
             if (out) out.textContent = '';
             if (raw) raw.textContent = '';
+            // 清空后更新预览
+            updateRequestPreview();
         }
 
         // 全局变量存储正在进行的测试
@@ -5973,9 +6032,6 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             const enableStream = !!document.getElementById('playgroundStream')?.checked;
             if (enableStream) body.stream = true;
             
-            // 显示请求预览
-            showRequestPreview(body, selectedKey);
-            
             try{
                 playgroundTestInProgress = true;
                 playgroundAbortController = new AbortController();
@@ -5983,8 +6039,35 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 collapseAfterSend();
                 showStatus('测试进行中...（可切换标签页，测试将在后台继续）','info');
                 
+                // 如果配置还没有加载，先加载配置
+                if (!currentConfig || Object.keys(currentConfig).length === 0) {
+                    try {
+                        const response = await fetch('/config/get', { method: 'GET', headers: getAuthHeaders() });
+                        const data = await response.json();
+                        if (response.ok) {
+                            currentConfig = data.config || {};
+                        }
+                    } catch (e) {
+                        console.warn('Failed to load config:', e);
+                    }
+                }
+                
+                // 获取正确的 API 访问密码
+                // 优先级：通用密码 > API 访问密码 > 控制面板密码（fallback）
+                let apiPassword = '';
+                if (currentConfig.password) {
+                    apiPassword = currentConfig.password;
+                } else if (currentConfig.api_password) {
+                    apiPassword = currentConfig.api_password;
+                } else {
+                    apiPassword = authToken;
+                }
+                
                 // 构建请求头
-                const headers = { ...getAuthHeaders() };
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiPassword}`
+                };
                 // 如果选择了特定的 Key，添加到请求头
                 if (selectedKey) {
                     headers['X-API-Key'] = selectedKey;
@@ -6152,9 +6235,74 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         }
 
         // ==================== 请求预览相关函数 ====================
-        function showRequestPreview(body, selectedKey) {
+        
+        // 实时更新请求预览
+        async function updateRequestPreview() {
+            const sel = document.getElementById('playgroundModel');
+            if (!sel || !sel.value) {
+                // 如果没有选择模型，清空预览
+                const bodyEl = document.getElementById('previewBody');
+                if (bodyEl) {
+                    bodyEl.value = '// 请先选择模型';
+                }
+                return;
+            }
+            
+            // 构建请求体
+            const temp = parseFloat(document.getElementById('playgroundTemperatureValue')?.value || document.getElementById('playgroundTemperature').value) || 0.5;
+            const maxT = parseInt(document.getElementById('playgroundMaxTokensValue')?.value || document.getElementById('playgroundMaxTokens').value) || 4096;
+            const selectedKey = document.getElementById('playgroundApiKey')?.value || '';
+            
+            const rows = Array.from(document.querySelectorAll('#playgroundMessages .form-group'));
+            const messages = rows.map(r => {
+                const role = r.querySelector('select')?.value || 'user';
+                const content = r.querySelector('textarea')?.value || '';
+                return { role, content };
+            }).filter(m => (m.content || '').trim().length > 0);
+            
+            const body = { 
+                model: sel.value, 
+                messages: messages.length > 0 ? messages : [{ role: 'user', content: '(请添加消息)' }], 
+                temperature: temp, 
+                max_tokens: maxT 
+            };
+            
+            // 添加工具定义
+            const toolsStr = document.getElementById('playgroundToolsJson')?.value?.trim();
+            if (toolsStr) {
+                try {
+                    const tools = JSON.parse(toolsStr);
+                    body.tools = tools;
+                    body.tool_choice = 'auto';
+                } catch (e) {
+                    // JSON 解析失败，不添加工具
+                }
+            }
+            
+            // 添加 stream 参数
+            const enableStream = !!document.getElementById('playgroundStream')?.checked;
+            if (enableStream) body.stream = true;
+            
+            // 更新预览
+            await showRequestPreview(body, selectedKey);
+        }
+        
+        async function showRequestPreview(body, selectedKey) {
             const section = document.getElementById('requestPreviewSection');
             if (!section) return;
+            
+            // 如果配置还没有加载，先加载配置
+            if (!currentConfig || Object.keys(currentConfig).length === 0) {
+                try {
+                    const response = await fetch('/config/get', { method: 'GET', headers: getAuthHeaders() });
+                    const data = await response.json();
+                    if (response.ok) {
+                        currentConfig = data.config || {};
+                    }
+                } catch (e) {
+                    console.warn('Failed to load config for preview:', e);
+                }
+            }
             
             // 显示预览区域
             section.style.display = 'block';
@@ -6168,10 +6316,31 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             // 更新请求头
             const headersEl = document.getElementById('previewHeaders');
             if (headersEl) {
-                const headers = { ...getAuthHeaders() };
+                // 获取正确的 API 访问密码
+                // 优先级：通用密码 > API 访问密码 > 控制面板密码（fallback）
+                let apiPassword = '';
+                if (currentConfig.password) {
+                    // 如果设置了通用密码，使用通用密码
+                    apiPassword = currentConfig.password;
+                } else if (currentConfig.api_password) {
+                    // 否则使用 API 访问密码
+                    apiPassword = currentConfig.api_password;
+                } else {
+                    // 如果都没有，使用当前登录的 token（控制面板密码，作为 fallback）
+                    apiPassword = authToken;
+                }
+                
+                // 构建请求头：包含 API 访问密码（Authorization）和可选的 API Key
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiPassword}`  // API 访问密码
+                };
+                
+                // 如果选择了特定的 API Key，添加到请求头
                 if (selectedKey) {
                     headers['X-API-Key'] = selectedKey;
                 }
+                
                 headersEl.textContent = JSON.stringify(headers, null, 2);
             }
             
@@ -6179,6 +6348,9 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             const bodyEl = document.getElementById('previewBody');
             if (bodyEl) {
                 bodyEl.value = JSON.stringify(body, null, 2);
+                bodyEl.readOnly = true;
+                bodyEl.style.backgroundColor = '#1e1e1e';
+                bodyEl.style.border = '1px solid var(--border-color)';
             }
         }
 
@@ -6227,10 +6399,16 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 
                 // 构建请求头
                 const headersEl = document.getElementById('previewHeaders');
-                let headers = { ...getAuthHeaders() };
+                let headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`  // API 访问密码
+                };
+                
+                // 如果用户编辑了请求头，使用编辑后的请求头
                 if (headersEl) {
                     try {
                         const customHeaders = JSON.parse(headersEl.textContent);
+                        // 合并自定义请求头，但保留 Authorization
                         headers = { ...headers, ...customHeaders };
                     } catch (e) {
                         console.warn('Failed to parse custom headers:', e);
