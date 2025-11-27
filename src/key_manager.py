@@ -305,6 +305,17 @@ class KeyManager:
         self._key_states = new_states
         
         await self._save_config()
+        
+        # 清理该密钥的统计数据
+        try:
+            from .stats_tracker import get_stats_tracker
+            stats_tracker = await get_stats_tracker()
+            # 获取当前活跃的密钥索引列表
+            active_indices = list(range(len(self._cache.keys)))
+            await stats_tracker.cleanup_inactive_keys(active_indices)
+        except Exception as e:
+            log.warning(f"Failed to cleanup stats for deleted key: {e}")
+        
         log.info(f"Deleted key at index {index}")
         return True
     

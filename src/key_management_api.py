@@ -121,6 +121,9 @@ async def get_all_keys(
             keys_response = [k for k in keys_response if k.enabled]
         elif status_filter == "disabled":
             keys_response = [k for k in keys_response if not k.enabled]
+        elif status_filter == "invalid":
+            # 失效密钥：未启用且状态为exhausted或有错误
+            keys_response = [k for k in keys_response if not k.enabled and (k.status in ["exhausted", "invalid"] or k.failure_count > 0)]
         
         # 应用搜索
         if search:
@@ -393,4 +396,31 @@ async def get_key_stats():
         return stats
     except Exception as e:
         log.error(f"Failed to get key stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/cleanup-stats")
+async def cleanup_key_stats():
+    """
+    清理过期密钥的统计数据
+    
+    删除不再存在的密钥的统计数据，保持数据一致性
+    """
+    try:
+        key_manager = await get_key_manager()
+        stats_tracker = await get_stats_tracker()
+        
+        # 获取当前所有密钥
+        all_keys = await key_manager.get_all_keys()
+        active_indices = [key.index for key in all_keys]
+        
+        # 清理非活跃密钥的统计数据
+        await stats_tracker.cleanup_inactive_keys(active_indices)
+        
+        return {
+            "success": True,
+            "message": f"Cleaned up stats, {len(active_indices)} active keys remaining"
+        }
+    except Exception as e:
+        log.error(f"Failed to cleanup key stats: {e}")
         raise HTTPException(status_code=500, detail=str(e))

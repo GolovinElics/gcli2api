@@ -28,6 +28,35 @@ class StatsTracker:
             return
         await self._load_stats()
         self._initialized = True
+        
+        # 自动清理无效密钥的统计数据
+        await self._auto_cleanup_invalid_keys()
+    
+    async def _auto_cleanup_invalid_keys(self):
+        """自动清理无效密钥的统计数据"""
+        try:
+            from .key_manager import get_key_manager
+            key_manager = await get_key_manager()
+            
+            # 获取当前所有有效密钥的索引
+            all_keys = await key_manager.get_all_keys()
+            valid_indices = {key.index for key in all_keys}
+            
+            # 找出需要清理的统计数据
+            stats_to_remove = [idx for idx in self._stats.keys() if idx not in valid_indices]
+            
+            if stats_to_remove:
+                for idx in stats_to_remove:
+                    del self._stats[idx]
+                
+                # 保存清理后的数据
+                await self._save_stats(force=True)
+                log.info(f"Auto-cleaned stats for {len(stats_to_remove)} invalid keys: {stats_to_remove}")
+            else:
+                log.debug("No invalid key stats to clean")
+                
+        except Exception as e:
+            log.warning(f"Failed to auto-cleanup invalid key stats: {e}")
     
     async def _load_stats(self):
         """从存储加载统计数据"""

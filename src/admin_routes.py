@@ -253,6 +253,46 @@ async def usage_aggregated(model: str = None, key: str = None, only: str = None,
                 if mod not in keys[k]["model_counts"]:
                     keys[k]["model_counts"][mod] = 0
                 keys[k]["model_counts"][mod] += 1
+    # 过滤失效 key：不在当前配置中的 key 视为失效
+    # 同时确保配置中的所有密钥都显示（即使没有使用记录）
+    try:
+        adapter = await get_storage_adapter()
+        cfg_keys = await adapter.get_config("assembly_api_keys", [])
+        if isinstance(cfg_keys, str):
+            cfg_keys = [x.strip() for x in cfg_keys.replace("\n", ",").split(",") if x.strip()]
+        cfg_set = set(cfg_keys or [])
+        # 只显示当前配置中的密钥
+        # 构造过滤后的 keys
+        filtered = {}
+        for kname, kv in keys.items():
+            if kname in cfg_set:
+                filtered[kname] = kv
+        # 添加配置中的密钥（即使没有使用记录）
+        for cfg_key in cfg_set:
+            if cfg_key not in filtered:
+                filtered[cfg_key] = {
+                    "ok": 0,
+                    "fail": 0,
+                    "models": {},
+                    "model_counts": {}
+                }
+        keys = filtered
+        
+        # 重新计算模型统计，只包含当前有效密钥使用的模型
+        filtered_models = {}
+        for key_data in keys.values():
+            for model_name, model_stats in key_data.get("models", {}).items():
+                if model_name not in filtered_models:
+                    filtered_models[model_name] = {"ok": 0, "fail": 0}
+                filtered_models[model_name]["ok"] += model_stats.get("ok", 0)
+                filtered_models[model_name]["fail"] += model_stats.get("fail", 0)
+        models = filtered_models
+        
+        # 重新计算总数
+        ok_total = sum(d.get("ok", 0) for d in keys.values())
+        fail_total = sum(d.get("fail", 0) for d in keys.values())
+    except Exception as e:
+        log.warning(f"Failed to filter keys: {e}")
     if only == "success":
         for d in models.values():
             d["fail"] = 0
@@ -517,3 +557,161 @@ async def rate_limits(token: str = Depends(authenticate)):
             })
     
     return JSONResponse(content={"rate_limits": result})
+@router.get("/keys/invalid")
+async def invalid_keys(token: str = Depends(authenticate)):
+    """
+    列出失效 key
+    
+    失效判断逻辑：
+    1. 配置中的密钥，但在日志中只有失败记录（fail > 0 且 ok == 0）
+    2. 不在配置中但在日志中出现的密钥（已删除的密钥）
+    """
+    log_file = log.get_log_file()
+    found: Dict[str, Dict[str, int]] = {}
+    if os.path.exists(log_file):
+        pattern = re.compile(r"RES model=([^\s]+)(?: key=([^\s]+))? status=([A-Z]+(?:\([^\)]*\))?)")
+        with open(log_file, "r", encoding="utf-8") as f:
+            for ln in f:
+                m = pattern.search(ln)
+                if not m:
+                    continue
+                k = m.group(2) or ""
+                if not k:
+                    continue
+                if k not in found:
+                    found[k] = {"ok": 0, "fail": 0}
+                if (m.group(3) or "").startswith("OK"):
+                    found[k]["ok"] += 1
+                else:
+                    found[k]["fail"] += 1
+    
+    adapter = await get_storage_adapter()
+    cfg_keys = await adapter.get_config("assembly_api_keys", [])
+    if isinstance(cfg_keys, str):
+        cfg_keys = [x.strip() for x in cfg_keys.replace("\n", ",").split(",") if x.strip()]
+    cfg_set = set(cfg_keys or [])
+    # 只检查当前配置中的密钥
+    
+    invalid = []
+    
+    # 1. 检查配置中的密钥是否失效（有失败记录但没有成功记录）
+    # 注意：只有当失败次数较多（>=3次）且没有成功记录时，才判断为失效
+    # 这样可以避免偶尔的失败导致密钥被误判为失效
+    for cfg_key in cfg_set:
+        if cfg_key in found:
+            kv = found[cfg_key]
+            ok_count = kv.get("ok", 0)
+            fail_count = kv.get("fail", 0)
+            
+            # 失效条件：失败次数 >= 3 且没有成功记录
+            # 或者：失败次数 > 成功次数的10倍（说明成功率极低）
+            is_invalid = False
+            reason = ""
+            
+            if fail_count >= 3 and ok_count == 0:
+                is_invalid = True
+                reason = f"只有失败记录（{fail_count}次），无成功记录"
+            elif ok_count > 0 and fail_count > ok_count * 10:
+                is_invalid = True
+                reason = f"成功率极低（成功{ok_count}次，失败{fail_count}次）"
+            
+            # 调试日志
+            log.debug(f"Checking key {cfg_key[:8]}...{cfg_key[-4:]}: ok={ok_count}, fail={fail_count}, is_invalid={is_invalid}")
+            
+            if is_invalid:
+                invalid.append({
+                    "key": cfg_key,
+                    "ok": ok_count,
+                    "fail": fail_count,
+                    "is_configured": True,
+                    "ignored": False,
+                    "status": "invalid/configured",
+                    "reason": reason
+                })
+    
+    # 2. 不再检查已删除的密钥，因为它们已经被删除了
+    # 只返回当前配置中的无效密钥
+    
+    return JSONResponse(content={"invalid_keys": invalid, "ignored": []})
+
+
+@router.post("/keys/delete-invalid")
+async def delete_invalid_keys(token: str = Depends(authenticate)):
+    """
+    批量删除失效密钥数据
+    
+    操作内容：
+    1. 从日志文件中删除失效密钥的所有记录
+    2. 清理失效密钥的统计数据
+    3. 将失效密钥加入忽略列表（防止再次出现）
+    """
+    adapter = await get_storage_adapter()
+    
+    # 1. 识别失效密钥
+    inv = await invalid_keys(token)
+    data = inv.body if hasattr(inv, "body") else inv
+    invalid_list = []
+    try:
+        if isinstance(data, dict):
+            invalid_list = [item.get("key") for item in data.get("invalid_keys", [])]
+        else:
+            import json
+            data_dict = json.loads(data)
+            invalid_list = [item.get("key") for item in data_dict.get("invalid_keys", [])]
+    except Exception as e:
+        log.warning(f"Failed to parse invalid keys: {e}")
+        invalid_list = []
+    
+    if not invalid_list:
+        return JSONResponse(content={"success": True, "ignored_count": 0, "invalid_deleted": 0, "log_lines_removed": 0})
+    
+    # 2. 从日志文件中删除失效密钥的记录
+    log_file = log.get_log_file()
+    lines_removed = 0
+    if os.path.exists(log_file):
+        try:
+            with open(log_file, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            
+            # 过滤掉包含失效密钥的行
+            new_lines = []
+            for line in lines:
+                should_keep = True
+                for invalid_key in invalid_list:
+                    if f"key={invalid_key}" in line:
+                        should_keep = False
+                        lines_removed += 1
+                        break
+                if should_keep:
+                    new_lines.append(line)
+            
+            # 写回日志文件
+            with open(log_file, "w", encoding="utf-8") as f:
+                f.writelines(new_lines)
+            
+            log.info(f"Removed {lines_removed} log lines for {len(invalid_list)} invalid keys")
+        except Exception as e:
+            log.error(f"Failed to clean log file: {e}")
+    
+    # 3. 不再保存 invalid_keys_ignored，直接删除
+    # 清空忽略列表，因为我们已经删除了无效密钥
+    await adapter.delete_config("invalid_keys_ignored")
+    
+    # 4. 清理 StatsTracker 非活跃索引统计
+    try:
+        from .key_manager import get_key_manager
+        from .stats_tracker import get_stats_tracker
+        key_manager = await get_key_manager()
+        stats_tracker = await get_stats_tracker()
+        all_keys = await key_manager.get_all_keys()
+        active_indices = [key.index for key in all_keys]
+        await stats_tracker.cleanup_inactive_keys(active_indices)
+    except Exception as e:
+        log.warning(f"Failed to cleanup stats: {e}")
+    
+    return JSONResponse(content={
+        "success": True,
+        "ignored_count": len(new_ignore),
+        "invalid_deleted": len(invalid_list),
+        "log_lines_removed": lines_removed
+    })

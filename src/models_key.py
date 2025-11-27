@@ -13,6 +13,7 @@ class KeyStatus(str, Enum):
     DISABLED = "disabled"       # 手动禁用
     EXHAUSTED = "exhausted"     # 速率限制用尽
     UNUSED = "unused"           # 未使用过
+    INVALID = "invalid"         # 失效密钥（认证失败、被封禁等）
 
 
 class AggregationMode(str, Enum):

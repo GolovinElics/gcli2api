@@ -29,6 +29,8 @@ SESSION_STORAGE_KEY = "assembly_dashboard_session"
 SESSION_EXPIRY_HOURS = 24 * 7  # Session 有效期 7 天
 _cache_store: Dict[str, Dict[str, Any]] = {}
 _cache_ttl_seconds = 300
+_api_keys_fetch_task = None
+_api_keys_last_fetch_ts = 0.0
 
 def _cache_get(key: str) -> Optional[Dict[str, Any]]:
     entry = _cache_store.get(key)
@@ -188,10 +190,25 @@ async def _make_dashboard_request(
             if path.startswith("/dashboard/"):
                 headers["Accept"] = "text/x-component"
                 headers["RSC"] = "1"
-                headers["Next-Url"] = path
+                if params:
+                    try:
+                        from urllib.parse import urlencode
+                        # Next-Url 不应携带 _rsc，保持与页面真实查询一致
+                        next_params = {k: v for k, v in params.items() if k != "_rsc"}
+                        if next_params:
+                            qs = urlencode(next_params, doseq=True)
+                            headers["Next-Url"] = f"{path}?{qs}"
+                        else:
+                            headers["Next-Url"] = path
+                    except Exception:
+                        headers["Next-Url"] = path
+                else:
+                    headers["Next-Url"] = path
                 headers.setdefault("priority", "u=1, i")
                 headers["X-Requested-With"] = "NextJS-RSC"
-                if path.endswith("/code") or path.endswith("/usage"):
+                if path.endswith("/usage"):
+                    headers["Referer"] = f"{ASSEMBLY_DASHBOARD_BASE}/dashboard/usage"
+                elif path.endswith("/code"):
                     headers["Referer"] = f"{ASSEMBLY_DASHBOARD_BASE}/dashboard/code"
                 elif path.endswith("/cost"):
                     headers["Referer"] = f"{ASSEMBLY_DASHBOARD_BASE}/dashboard/cost"
@@ -430,10 +447,10 @@ async def get_session_info() -> SessionInfo:
 @router.get("/info")
 async def get_account_info() -> Dict[str, Any]:
     """
-    获取账户基本信息
+    获取账户基本信息（快速响应）
     
-    返回账户 ID、邮箱、类型、创建时间、支付方式等信息。
-    直接使用登录时保存的用户信息，无需再调用 Dashboard API。
+    返回账户 ID、邮箱、类型、创建时间、支付方式等基础信息。
+    不包含 API key 信息，API key 通过 /api/account/api-keys 单独获取。
     """
     session = await _get_session()
     if not session:
@@ -441,27 +458,179 @@ async def get_account_info() -> Dict[str, Any]:
     
     # 优先使用保存的用户信息
     user_info = session.get("user_info")
-    if user_info:
-        return {
-            "id": str(user_info.get("id") or session.get("user_id") or ""),
-            "email": str(user_info.get("email") or session.get("email") or ""),
-            "customer_type": str(user_info.get("customer_type") or "PAYG"),
-            "cc_brand": user_info.get("cc_brand"),
-            "cc_last4": user_info.get("cc_last4"),
-            "created": str(user_info.get("created") or session.get("logged_in_at") or ""),
-            "api_token": user_info.get("api_token") or session.get("api_token"),
-        }
     
-    # 兼容旧 session 格式
-    return {
-        "id": str(session.get("user_id") or ""),
-        "email": str(session.get("email") or ""),
-        "customer_type": str(session.get("customer_type") or "PAYG"),
-        "cc_brand": None,
-        "cc_last4": None,
-        "created": str(session.get("logged_in_at") or ""),
-        "api_token": session.get("api_token"),
+    # 基础账户信息（快速响应，不请求外部 API）
+    result = {
+        "id": str((user_info or {}).get("id") or session.get("user_id") or ""),
+        "email": str((user_info or {}).get("email") or session.get("email") or ""),
+        "customer_type": str((user_info or {}).get("customer_type") or "PAYG"),
+        "cc_brand": (user_info or {}).get("cc_brand"),
+        "cc_last4": (user_info or {}).get("cc_last4"),
+        "created": str((user_info or {}).get("created") or session.get("logged_in_at") or ""),
+        "api_token": (user_info or {}).get("api_token") or session.get("api_token"),
     }
+    
+    return result
+
+
+@router.get("/api-keys")
+async def get_account_api_keys(force: bool = False) -> Dict[str, Any]:
+    """
+    获取账户的 API key 列表（独立端点）
+    
+    优先从 session 中获取 api_token（登录时已保存），
+    如果需要完整的项目信息，则从 Dashboard API 获取。
+    """
+    session = await _get_session()
+    if not session:
+        raise HTTPException(status_code=401, detail="Not logged in. Please login first.")
+    
+    cache_key = "api_keys"
+    if not force:
+        cached = _cache_get(cache_key)
+        if cached:
+            return cached
+    
+    result = {
+        "projects": [],
+        "api_keys": [],
+    }
+    
+    # 优先从 session 中获取 api_token（快速响应）
+    user_info = session.get("user_info", {})
+    api_token = user_info.get("api_token") or session.get("api_token")
+    
+    if api_token:
+        # 直接使用登录时保存的 api_token
+        result["api_keys"].append({
+            "id": None,
+            "project_id": None,
+            "project_name": "Default",
+            "api_key": api_token,
+            "name": "Default API Key",
+            "is_disabled": False,
+            "created": session.get("logged_in_at"),
+        })
+        log.info("Using api_token from session")
+    
+    _cache_set(cache_key, result)
+    if force:
+        try:
+            rsc = await _make_dashboard_request(
+                "GET",
+                "/dashboard/cost",
+                params={"_rsc": "125dm"},
+            )
+            if rsc and "raw" in rsc:
+                projects = _parse_projects_from_rsc(rsc["raw"])
+                if projects:
+                    updated = {
+                        "projects": projects,
+                        "api_keys": [],
+                    }
+                    for project in projects:
+                        for token in project.get("tokens", []):
+                            updated["api_keys"].append({
+                                "id": token.get("id"),
+                                "project_id": token.get("project_id"),
+                                "project_name": project.get("project", {}).get("name"),
+                                "api_key": token.get("api_key"),
+                                "name": token.get("name"),
+                                "is_disabled": token.get("is_disabled"),
+                                "created": token.get("created"),
+                            })
+                    if updated["api_keys"]:
+                        _cache_set(cache_key, updated)
+                        return updated
+        except Exception as e:
+            log.warning(f"Force refresh API keys failed: {e}")
+        return result
+    else:
+        try:
+            import asyncio, time
+            global _api_keys_fetch_task, _api_keys_last_fetch_ts
+            if (_api_keys_fetch_task is None or _api_keys_fetch_task.done()) and (time.time() - _api_keys_last_fetch_ts > 60):
+                _api_keys_last_fetch_ts = time.time()
+                async def _refresh():
+                    try:
+                        r = await _make_dashboard_request(
+                            "GET",
+                            "/dashboard/cost",
+                            params={"_rsc": "125dm"},
+                        )
+                        if r and "raw" in r:
+                            projects = _parse_projects_from_rsc(r["raw"])
+                            if projects:
+                                updated = {"projects": projects, "api_keys": []}
+                                for project in projects:
+                                    for token in project.get("tokens", []):
+                                        updated["api_keys"].append({
+                                            "id": token.get("id"),
+                                            "project_id": token.get("project_id"),
+                                            "project_name": project.get("project", {}).get("name"),
+                                            "api_key": token.get("api_key"),
+                                            "name": token.get("name"),
+                                            "is_disabled": token.get("is_disabled"),
+                                            "created": token.get("created"),
+                                        })
+                                if updated["api_keys"]:
+                                    _cache_set(cache_key, updated)
+                                    log.info(f"API keys cache updated: {len(updated['api_keys'])} keys")
+                    except Exception as ex:
+                        log.debug(f"Background API keys refresh failed: {ex}")
+                _api_keys_fetch_task = asyncio.create_task(_refresh())
+        except Exception:
+            pass
+        return result
+
+
+def _parse_projects_from_rsc(raw_text: str) -> List[Dict[str, Any]]:
+    """
+    从 RSC 数据中解析项目和 API key 信息
+    
+    格式: "projects":[{"project":{...},"tokens":[{...}]}]
+    """
+    import re
+    
+    projects = []
+    
+    try:
+        # 查找 "projects":[ 开始的 JSON 数组
+        # 格式: "projects":[{"project":{...},"tokens":[...]}]
+        projects_pattern = r'"projects":\s*\[((?:\{[^}]*"project":[^}]*\}[^]]*)+)\]'
+        
+        # 更简单的方法：直接查找 projects 数组
+        start_marker = '"projects":['
+        start_pos = raw_text.find(start_marker)
+        
+        if start_pos >= 0:
+            # 找到 projects 数组的开始位置
+            array_start = start_pos + len(start_marker) - 1  # 包含 [
+            
+            # 找到匹配的 ] 结束位置
+            bracket_count = 0
+            array_end = -1
+            for i in range(array_start, min(array_start + 5000, len(raw_text))):
+                if raw_text[i] == '[':
+                    bracket_count += 1
+                elif raw_text[i] == ']':
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        array_end = i + 1
+                        break
+            
+            if array_end > array_start:
+                json_str = raw_text[array_start:array_end]
+                try:
+                    projects = json.loads(json_str)
+                    log.info(f"Parsed {len(projects)} projects from RSC data")
+                except json.JSONDecodeError as e:
+                    log.warning(f"Failed to parse projects JSON: {e}")
+        
+    except Exception as e:
+        log.error(f"Failed to parse projects from RSC: {e}")
+    
+    return projects
 
 
 @router.get("/billing")
@@ -577,15 +746,9 @@ async def get_usage_data(
         使用量数据，包括总 tokens、按模型分类的使用量等
     """
     # 计算默认日期范围
-    from datetime import datetime, timedelta
-    if not ending_before:
-        ending_before = datetime.now().strftime("%Y-%m-%d")
-    if not starting_on:
-        end_dt = datetime.strptime(ending_before, "%Y-%m-%d")
-        start_dt = end_dt - timedelta(days=30)
-        starting_on = start_dt.strftime("%Y-%m-%d")
-    
-    cache_key = f"usage:{window_size}"
+    # 参考 AssemblyAI API: starting_on=2025-11-26&ending_before=2025-11-27 表示查询 11/26 当天
+    # ending_before 是 exclusive 的（不包含该日期）
+    cache_key = "usage:summary"
     cached = None if force else _cache_get(cache_key)
     if cached:
         return cached
@@ -595,20 +758,16 @@ async def get_usage_data(
         "items": [],
         "by_model": [],
         "segments": [],
-        "period": {
-            "start": starting_on,
-            "end": ending_before,
-        },
         "debug_info": {}
     }
     
     try:
-        log.info(f"Fetching usage data: {starting_on} to {ending_before}, window={window_size}, group_by={group_by}")
-
+        base_params = {}
         rsc_params_list = [
+            {"_rsc": "sd5d8"},
             {"_rsc": "1mzsd"},
             {"_rsc": "1"},
-            {}
+            base_params,
         ]
 
         rsc_data = None
@@ -646,10 +805,20 @@ async def get_usage_data(
             if "error" in parsed:
                 result["error"] = parsed["error"]
 
-            # 如果首次解析未获得有效数据，尝试从另一个页面来源获取（使用 code 作为回退）
-            if result["total_tokens"] == 0 and not result["by_model"] and not result["segments"]:
-                fallback_path = "/dashboard/code"
-                for rsc_params in rsc_params_list:
+            # 如果没有获得by_model数据（最重要的数据），尝试从多个来源获取
+            if not result["by_model"] or len(result["by_model"]) == 0:
+                log.warning("No by_model data in first attempt, trying fallback sources")
+                
+                # 尝试所有可能的路径和参数组合
+                fallback_attempts = [
+                    ("/dashboard/usage", {"_rsc": "sd5d8"}),
+                    ("/dashboard/usage", {"_rsc": "1mzsd"}),
+                    ("/dashboard/code", {"_rsc": "sd5d8"}),
+                    ("/dashboard/code", {"_rsc": "1mzsd"}),
+                    ("/dashboard/code", {"_rsc": "1"}),
+                ]
+                
+                for fallback_path, rsc_params in fallback_attempts:
                     try:
                         fb_data = await _make_dashboard_request(
                             "GET",
@@ -660,14 +829,18 @@ async def get_usage_data(
                             raw_text = fb_data["raw"]
                             if not (raw_text.strip().startswith("<!DOCTYPE") or raw_text.strip().startswith("<html")):
                                 parsed_fb = _parse_usage_rsc_data(fb_data)
-                                if parsed_fb:
+                                if parsed_fb and parsed_fb.get("by_model"):
+                                    # 找到了by_model数据，合并结果
                                     result["total_tokens"] = parsed_fb.get("total_tokens", result["total_tokens"])
                                     result["items"] = parsed_fb.get("items", result["items"])
                                     result["by_model"] = parsed_fb.get("by_model", result["by_model"])
                                     result["segments"] = parsed_fb.get("segments", result["segments"])
                                     result["debug_info"]["fallback_used"] = True
-                                break
-                    except Exception:
+                                    result["debug_info"]["fallback_source"] = f"{fallback_path} with {rsc_params}"
+                                    log.info(f"Found by_model data from fallback: {fallback_path} with {rsc_params}")
+                                    break
+                    except Exception as e:
+                        log.debug(f"Fallback attempt failed for {fallback_path}: {e}")
                         continue
 
             log.info(f"Parsed usage from RSC: {result['total_tokens']} tokens, {len(result['by_model'])} models, {len(result['segments'])} segments")
@@ -706,15 +879,9 @@ async def get_cost_data(
         成本数据，包括总成本、按服务/模型分类的成本等
     """
     # 计算默认日期范围
-    from datetime import datetime, timedelta
-    if not ending_before:
-        ending_before = datetime.now().strftime("%Y-%m-%d")
-    if not starting_on:
-        end_dt = datetime.strptime(ending_before, "%Y-%m-%d")
-        start_dt = end_dt - timedelta(days=30)
-        starting_on = start_dt.strftime("%Y-%m-%d")
-    
-    cache_key = f"cost:{window_size}|{group_by}"
+    # 参考 AssemblyAI API: starting_on=2025-11-26&ending_before=2025-11-27 表示查询 11/26 当天
+    # ending_before 是 exclusive 的（不包含该日期）
+    cache_key = "cost:summary"
     cached = None if force else _cache_get(cache_key)
     if cached:
         return cached
@@ -722,37 +889,61 @@ async def get_cost_data(
     result = {
         "total_cost": 0.0,
         "items": [],
-        "by_service": [],
-        "by_model": [],
-        "spend_trend": [],
-        "period": {
-            "start": starting_on,
-            "end": ending_before,
-        }
+        "by_service": []
     }
     
     try:
-        # 直接解析 RSC 数据
-        rsc_data = await _make_dashboard_request(
-            "GET",
-            "/dashboard/cost",
-            params={
-                "_rsc": "1",
-                "starting_on": starting_on,
-                "ending_before": ending_before,
-                "window_size": window_size,
-                "group_by": group_by,
-            }
-        )
+        rsc_data = None
+        rsc_params_list = [
+            {"_rsc": "sd5d8"},
+            {"_rsc": "1mzsd"},
+            {"_rsc": "1"},
+            {},
+        ]
+        
+        for rsc_params in rsc_params_list:
+            try:
+                rsc_data = await _make_dashboard_request(
+                    "GET",
+                    "/dashboard/cost",
+                    params=rsc_params
+                )
+                if rsc_data and "raw" in rsc_data:
+                    raw_text = rsc_data["raw"]
+                    if not (raw_text.strip().startswith("<!DOCTYPE") or raw_text.strip().startswith("<html")):
+                        if "chartExportData" in raw_text or '"data":' in raw_text or "total" in raw_text:
+                            log.info(f"Got valid cost data with params: {rsc_params}")
+                            break
+                    rsc_data = None
+            except Exception as e:
+                log.debug(f"Cost request failed with {rsc_params}: {e}")
+                rsc_data = None
         
         if rsc_data:
             parsed = _parse_cost_rsc_data(rsc_data)
             result["total_cost"] = parsed.get("total_cost", 0.0)
-            result["items"] = parsed.get("items", [])
             result["by_service"] = parsed.get("by_service", [])
             result["by_model"] = parsed.get("by_model", [])
             result["spend_trend"] = parsed.get("spend_trend", [])
-            log.info(f"Parsed cost from RSC: ${result['total_cost']}")
+            
+            # 如果没有获得by_model数据，尝试fallback
+            if not result["by_model"] or len(result["by_model"]) == 0:
+                log.warning("No by_model data in cost, trying fallback")
+                # 尝试其他参数组合
+                for rsc_params in rsc_params_list:
+                    try:
+                        fb_data = await _make_dashboard_request("GET", "/dashboard/cost", params=rsc_params)
+                        if fb_data and "raw" in fb_data:
+                            parsed_fb = _parse_cost_rsc_data(fb_data)
+                            if parsed_fb.get("by_model"):
+                                result["by_model"] = parsed_fb["by_model"]
+                                result["debug_info"] = {"fallback_used": True}
+                                log.info(f"Found by_model data from fallback with {rsc_params}")
+                                break
+                    except Exception:
+                        continue
+            
+            log.info(f"Parsed cost from RSC: ${result['total_cost']}, {len(result['by_model'])} models")
     
     except Exception as e:
         log.error(f"Failed to fetch cost data: {e}")
@@ -1132,9 +1323,19 @@ def _extract_model_names_from_rsc(raw_text: str) -> List[Dict[str, Any]]:
     
     models = []
     
+    # 将解析范围尽量限定在目标视图区域（例如 granularity=day 的 UsageChart），避免误取 30 天摘要卡片
+    scan_text = raw_text
+    try:
+        pos = raw_text.find('"granularity":"day"')
+        if pos >= 0:
+            # 只扫描该区域后面的内容，降低误匹配概率
+            scan_text = raw_text[pos: pos + 60000]
+    except Exception:
+        scan_text = raw_text
+    
     # 方法1: 尝试按行解析 JSON (针对 RSC 流式响应)
     try:
-        lines = raw_text.split('\n')
+        lines = scan_text.split('\n')
         for line in lines:
             line = line.strip()
             if not line:
@@ -1214,7 +1415,7 @@ def _extract_model_names_from_rsc(raw_text: str) -> List[Dict[str, Any]]:
     try:
         # 查找 "LLM Gateway + LeMUR-{model_name}" 格式的 div key
         div_pattern = r'\["[^"]*","div","LLM Gateway \+ LeMUR-([^"]+)"'
-        div_matches = re.findall(div_pattern, raw_text)
+        div_matches = re.findall(div_pattern, scan_text)
         
         if div_matches:
             log.debug(f"Found {len(div_matches)} model names in div keys (regex)")
@@ -1226,7 +1427,7 @@ def _extract_model_names_from_rsc(raw_text: str) -> List[Dict[str, Any]]:
         
         # 如果 JSON 解析失败，尝试旧的正则作为最后的手段
         model_token_pattern = r'"children":\s*\[[^\]]*,\s*" ",\s*"([^"]+)"\][^}]*"children":\s*\["([\d,]+)"'
-        model_token_matches = re.findall(model_token_pattern, raw_text)
+        model_token_matches = re.findall(model_token_pattern, scan_text)
         
         for model_name, token_str in model_token_matches:
             if model_name and not model_name.lower() in ['tokens', 'total', 'hours']:
@@ -1243,6 +1444,17 @@ def _extract_model_names_from_rsc(raw_text: str) -> List[Dict[str, Any]]:
         
         if models:
             log.debug(f"Extracted {len(models)} model entries via regex")
+        if not models:
+            try:
+                div_token_pattern = r'\["\$","div","LLM Gateway \+ LeMUR-([^"]+)",[\s\S]*?"children":\s*\[[\s\S]*?"([\d,]+)"[\s\S]*?"tokens"'
+                for m in re.finditer(div_token_pattern, scan_text):
+                    name = m.group(1)
+                    val = int(m.group(2).replace(',', ''))
+                    sanitized_name = _sanitize_model_name(name)
+                    if sanitized_name:
+                        models.append({"model": sanitized_name, "tokens": val})
+            except Exception:
+                pass
     
     except Exception as e:
         log.warning(f"Failed to extract model names via regex: {e}")
@@ -1290,46 +1502,21 @@ def _parse_usage_rsc_data(data: Dict[str, Any]) -> Dict[str, Any]:
     try:
         log.debug(f"Parsing usage RSC data, length: {len(raw_text)}")
         
-        total_matches = re.findall(r'"children":\s*\["([\d,]+)",\s*" ",\s*\["\$","span",null,\{"children":\["Total ","tokens"\]\}\]\]', raw_text)
-        
-        if total_matches:
-            total_str = total_matches[0].replace(",", "")
-            result["total_tokens"] = int(total_str)
-            result["debug_info"]["parsing_method"] = "pattern1"
-            log.info(f"Extracted total tokens (pattern1): {result['total_tokens']}")
-        
-        # 格式2: 更宽松的匹配 - 查找任何大数字后跟 "Total" 和 "tokens"
-        if result["total_tokens"] == 0:
-            # 查找类似 "515,659" 这样的大数字（5-7位，带逗号）
-            total_pattern2 = r'"([\d]{1,3},[\d]{3}(?:,[\d]{3})?)"[^}]{0,100}[Tt]otal[^}]{0,50}tokens'
-            total_matches = re.findall(total_pattern2, raw_text)
-            if total_matches:
-                # 取最大的数字（通常是总数）
-                max_tokens = 0
-                for match in total_matches:
-                    tokens = int(match.replace(",", ""))
-                    if tokens > max_tokens:
-                        max_tokens = tokens
-                if max_tokens > 0:
-                    result["total_tokens"] = max_tokens
-                    result["debug_info"]["parsing_method"] = "pattern2"
-                    log.info(f"Extracted total tokens (pattern2): {result['total_tokens']}")
-        
-        # 2. 提取 segments 数据（用于可视化）
+        # 1. 先提取 segments 与按模型统计
         segments = _extract_segments_from_rsc(raw_text)
         if segments:
             result["segments"] = segments
             result["debug_info"]["extracted_segments_count"] = len(segments)
             log.info(f"Extracted {len(segments)} visualization segments")
         
-        # 3. 提取模型名称和 token 数量
+        # 2. 提取模型名称和 token 数量
         models = _extract_model_names_from_rsc(raw_text)
         if models:
             result["by_model"] = models
             result["debug_info"]["extracted_models_count"] = len(models)
             log.info(f"Extracted {len(models)} model entries")
         
-        # 4. 如果有 segments 但没有模型名称，尝试关联
+        # 3. 如果有 segments 但没有模型名称，尝试关联
         if segments and not models:
             # 尝试从 raw_text 中查找模型名称列表
             # 这些名称通常在 segments 附近
@@ -1352,14 +1539,36 @@ def _parse_usage_rsc_data(data: Dict[str, Any]) -> Dict[str, Any]:
                             })
                 log.debug(f"Associated {len(result['by_model'])} segments with model names")
         
-        # 5. 如果没有提取到总数，从模型数据或 segments 计算
-        if result["total_tokens"] == 0:
-            if result["by_model"]:
-                result["total_tokens"] = sum(m["tokens"] for m in result["by_model"])
-                log.info(f"Calculated total tokens from models: {result['total_tokens']}")
-            elif segments:
-                result["total_tokens"] = sum(s["value"] for s in segments)
-                log.info(f"Calculated total tokens from segments: {result['total_tokens']}")
+        # 4. 总数优先来自当前解析的模型或分段，以避免误取 30 天摘要的总额
+        if result["by_model"]:
+            result["total_tokens"] = sum(m.get("tokens", 0) for m in result["by_model"])
+            result["debug_info"]["parsing_method"] = "sum_by_model"
+            log.info(f"Calculated total tokens from models: {result['total_tokens']}")
+        elif segments:
+            result["total_tokens"] = sum(s.get("value", 0) for s in segments)
+            result["debug_info"]["parsing_method"] = "sum_segments"
+            log.info(f"Calculated total tokens from segments: {result['total_tokens']}")
+        else:
+            # 5. 兜底：从 "Total tokens" 模式提取（可能是摘要卡片）
+            total_matches = re.findall(r'"children":\s*\["([\d,]+)",\s*" ",\s*\["\$","span",null,\{"children":\["Total ","tokens"\]\}\]\]', raw_text)
+            if total_matches:
+                total_str = total_matches[0].replace(",", "")
+                result["total_tokens"] = int(total_str)
+                result["debug_info"]["parsing_method"] = "pattern1_fallback"
+                log.info(f"Extracted total tokens (pattern1 fallback): {result['total_tokens']}")
+            else:
+                total_pattern2 = r'"([\d]{1,3},[\d]{3}(?:,[\d]{3})?)"[^}]{0,100}[Tt]otal[^}]{0,50}tokens'
+                total_matches = re.findall(total_pattern2, raw_text)
+                if total_matches:
+                    max_tokens = 0
+                    for match in total_matches:
+                        tokens = int(match.replace(",", ""))
+                        if tokens > max_tokens:
+                            max_tokens = tokens
+                    if max_tokens > 0:
+                        result["total_tokens"] = max_tokens
+                        result["debug_info"]["parsing_method"] = "pattern2_fallback"
+                        log.info(f"Extracted total tokens (pattern2 fallback): {result['total_tokens']}")
         
         # 6. 记录调试信息
         if result["total_tokens"] == 0 and not result["by_model"]:
@@ -1382,6 +1591,7 @@ def _parse_cost_rsc_data(data: Dict[str, Any]) -> Dict[str, Any]:
     提取总成本、按服务分类的成本和消费趋势
     """
     import re
+    import json
     
     if "raw" not in data:
         return data
@@ -1396,14 +1606,94 @@ def _parse_cost_rsc_data(data: Dict[str, Any]) -> Dict[str, Any]:
     }
     
     try:
-        cost_matches = re.findall(r'"children":\s*"\$(\d+\.?\d*)"', raw_text)
-        if cost_matches:
-            costs = [float(c) for c in cost_matches]
-            result["total_cost"] = max(costs) if costs else 0.0
+        # 1. 优先从 title 属性提取总成本（最准确）
+        title_match = re.search(r'"title":\s*"Total spend:\s*\$(\d+\.?\d*)"', raw_text)
+        if title_match:
+            result["total_cost"] = float(title_match.group(1))
         else:
-            ts_matches = re.findall(r'Total\s+spend:\s*\$(\d+\.?\d*)', raw_text)
-            if ts_matches:
-                result["total_cost"] = float(ts_matches[0])
+            cost_matches = re.findall(r'"children":\s*"\$\$?(\d+\.?\d*)"', raw_text)
+            if cost_matches:
+                costs = [float(c) for c in cost_matches]
+                result["total_cost"] = max(costs) if costs else 0.0
+            else:
+                ts_matches = re.findall(r'Total\s+spend:\s*\$(\d+\.?\d*)', raw_text)
+                if ts_matches:
+                    result["total_cost"] = float(ts_matches[0])
+        
+        # 2. 优先从 chartExportData 提取详细数据（最完整）
+        # chartExportData 可能包含嵌套的对象，需要更复杂的匹配
+        chart_export_start = raw_text.find('"chartExportData":[')
+        log.debug(f"Looking for chartExportData, found at position: {chart_export_start}")
+        if chart_export_start >= 0:
+            # 找到数组的开始位置
+            array_start = chart_export_start + len('"chartExportData":')
+            # 找到匹配的 ] 结束位置
+            bracket_count = 0
+            array_end = -1
+            for i in range(array_start, min(array_start + 50000, len(raw_text))):
+                if raw_text[i] == '[':
+                    bracket_count += 1
+                elif raw_text[i] == ']':
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        array_end = i + 1
+                        break
+            
+            if array_end > array_start:
+                json_str = raw_text[array_start:array_end]
+                try:
+                    chart_data = json.loads(json_str)
+                    if chart_data:
+                        # 按模型聚合（分别统计输入、输出，以及未知方向的额外成本）
+                        model_costs: Dict[str, Dict[str, float]] = {}
+                        for item in chart_data:
+                            model = item.get("model", "")
+                            value = float(item.get("value", 0))
+                            
+                            # 解析模型名和方向
+                            base = model
+                            is_input = False
+                            is_output = False
+                            if base.endswith(" (Input)"):
+                                is_input = True
+                                base = base[:-8].strip()
+                            elif base.endswith(" (Output)"):
+                                is_output = True
+                                base = base[:-9].strip()
+                            
+                            if base not in model_costs:
+                                model_costs[base] = {"input_cost": 0.0, "output_cost": 0.0, "extra_cost": 0.0}
+                            
+                            if is_input:
+                                model_costs[base]["input_cost"] += value
+                            elif is_output:
+                                model_costs[base]["output_cost"] += value
+                            else:
+                                # 未标注方向的值累加到额外成本，再合并到总额
+                                model_costs[base]["extra_cost"] += value
+                        
+                        by_model = []
+                        for model, costs in model_costs.items():
+                            total = costs["input_cost"] + costs["output_cost"] + costs.get("extra_cost", 0.0)
+                            by_model.append({
+                                "model": model,
+                                "input_cost": costs["input_cost"],
+                                "output_cost": costs["output_cost"],
+                                "cost": total,
+                            })
+                        by_model.sort(key=lambda x: x.get("cost", 0.0), reverse=True)
+                        result["by_model"] = by_model
+                        
+                        # 如果没有从 title 获取到总成本，从模型数据计算
+                        if result["total_cost"] == 0.0:
+                            result["total_cost"] = sum(m.get("cost", 0.0) for m in by_model)
+                        
+                        log.info(f"Parsed {len(by_model)} models from chartExportData")
+                except Exception as e:
+                    log.warning(f"Failed to parse chartExportData: {e}")
+                    # 记录原始数据样本用于调试
+                    sample = json_str[:500] if len(json_str) > 500 else json_str
+                    log.debug(f"chartExportData sample: {sample}")
 
         # 提取总额按服务分类（TotalCard）
         try:
@@ -1431,66 +1721,72 @@ def _parse_cost_rsc_data(data: Dict[str, Any]) -> Dict[str, Any]:
             pass
         
         # 2. 提取按模型分类的成本（CostChart data 映射）
-        data_matches = re.findall(r'"data":\s*\[((?:\{[^}]+\},?\s*)+)\]', raw_text)
-        for match in data_matches:
-            try:
-                import json
-                json_str = '[' + match + ']'
-                arr = json.loads(json_str)
-                if arr and isinstance(arr, list):
-                    # 跳过趋势数据（包含 name/value 键的对象）
-                    first_obj = arr[0] if len(arr) > 0 else {}
-                    if isinstance(first_obj, dict) and ("name" in first_obj and "value" in first_obj):
-                        pass
-                    else:
-                        agg: Dict[str, Dict[str, float]] = {}
-                        for obj in arr:
-                            if isinstance(obj, dict):
-                                for name, val in obj.items():
-                                    # 过滤无关键
-                                    if name in ("name", "value"):
-                                        continue
-                                    base = name
-                                    dir_in = False
-                                    dir_out = False
-                                    if base.endswith(" (Input)"):
-                                        dir_in = True
-                                        base = base[:-8]
-                                    elif base.endswith(" (Output)"):
-                                        dir_out = True
-                                        base = base[:-9]
-                                    if not base or base == "name":
-                                        continue
-                                    if base not in agg:
-                                        agg[base] = {"input_cost": 0.0, "output_cost": 0.0}
-                                    try:
-                                        amount = float(val)
-                                    except Exception:
-                                        amount = 0.0
-                                    if dir_in:
-                                        agg[base]["input_cost"] += amount
-                                    elif dir_out:
-                                        agg[base]["output_cost"] += amount
-                                    else:
-                                        agg.setdefault(base, {"input_cost": 0.0, "output_cost": 0.0})
-                                        agg[base]["output_cost"] += amount
-                        by_model = []
-                        for model, costs in agg.items():
-                            total = float(costs.get("input_cost", 0.0)) + float(costs.get("output_cost", 0.0))
-                            by_model.append({
-                                "model": model,
-                                "input_cost": float(costs.get("input_cost", 0.0)),
-                                "output_cost": float(costs.get("output_cost", 0.0)),
-                                "cost": total,
-                            })
-                        if by_model:
-                            by_model.sort(key=lambda x: x.get("cost", 0.0), reverse=True)
-                            result["by_model"] = by_model
-                            if result["total_cost"] == 0.0:
-                                result["total_cost"] = sum(m.get("cost", 0.0) for m in by_model)
-                            break
-            except Exception:
-                continue
+        # 只有在chartExportData没有提供by_model数据时才使用这个方法
+        if not result["by_model"]:
+            log.debug("chartExportData didn't provide by_model, trying alternative parsing")
+            data_matches = re.findall(r'"data":\s*\[((?:\{[^}]+\},?\s*)+)\]', raw_text)
+            log.debug(f"Found {len(data_matches)} data matches")
+            for match in data_matches:
+                try:
+                    import json
+                    json_str = '[' + match + ']'
+                    arr = json.loads(json_str)
+                    if arr and isinstance(arr, list):
+                        # 跳过趋势数据（包含 name/value 键的对象）
+                        first_obj = arr[0] if len(arr) > 0 else {}
+                        if isinstance(first_obj, dict) and ("name" in first_obj and "value" in first_obj):
+                            pass
+                        else:
+                            agg: Dict[str, Dict[str, float]] = {}
+                            for obj in arr:
+                                if isinstance(obj, dict):
+                                    for name, val in obj.items():
+                                        # 过滤无关键
+                                        if name in ("name", "value"):
+                                            continue
+                                        base = name
+                                        dir_in = False
+                                        dir_out = False
+                                        if base.endswith(" (Input)"):
+                                            dir_in = True
+                                            base = base[:-8]
+                                        elif base.endswith(" (Output)"):
+                                            dir_out = True
+                                            base = base[:-9]
+                                        if not base or base == "name":
+                                            continue
+                                        if base not in agg:
+                                            agg[base] = {"input_cost": 0.0, "output_cost": 0.0, "extra_cost": 0.0}
+                                        try:
+                                            amount = float(val)
+                                        except Exception:
+                                            amount = 0.0
+                                        if dir_in:
+                                            agg[base]["input_cost"] += amount
+                                        elif dir_out:
+                                            agg[base]["output_cost"] += amount
+                                        else:
+                                            # 未标注方向的值累加到额外成本，再合并到总额
+                                            agg[base]["extra_cost"] += amount
+                            by_model = []
+                            for model, costs in agg.items():
+                                total = float(costs.get("input_cost", 0.0)) + float(costs.get("output_cost", 0.0)) + float(costs.get("extra_cost", 0.0))
+                                by_model.append({
+                                    "model": model,
+                                    "input_cost": float(costs.get("input_cost", 0.0)),
+                                    "output_cost": float(costs.get("output_cost", 0.0)),
+                                    "cost": total,
+                                })
+                            if by_model:
+                                by_model.sort(key=lambda x: x.get("cost", 0.0), reverse=True)
+                                result["by_model"] = by_model
+                                if result["total_cost"] == 0.0:
+                                    result["total_cost"] = sum(m.get("cost", 0.0) for m in by_model)
+                                log.info(f"Parsed {len(by_model)} models from alternative data source")
+                                break
+                except Exception as e:
+                    log.debug(f"Failed to parse alternative data source: {e}")
+                    continue
         
         # 3. 提取消费趋势数据
         chart_matches = re.findall(r'"data":\s*\[((?:\{[^}]+\},?\s*)+)\]', raw_text)
@@ -1573,6 +1869,7 @@ async def export_cost_data(
     format: str = "json",
     starting_on: Optional[str] = None,
     ending_before: Optional[str] = None,
+    window_size: str = "month",
 ) -> Dict[str, Any]:
     """
     导出成本数据
@@ -1581,25 +1878,18 @@ async def export_cost_data(
         format: 导出格式 (json, csv)
         starting_on: 开始日期
         ending_before: 结束日期
+        window_size: 时间窗口
     """
     # 获取成本数据
-    cost_data = await get_cost_data(
-        window_size="day",
-        starting_on=starting_on,
-        ending_before=ending_before,
-        group_by="date",
-    )
+    cost_data = await get_cost_data(force=True)
     
     if format == "csv":
-        # 转换为 CSV 格式
-        csv_lines = ["date,product,model,input_tokens,output_tokens,cost"]
-        items = cost_data.get("items", [])
-        for item in items:
-            csv_lines.append(
-                f"{item.get('date', '')},{item.get('product', '')},"
-                f"{item.get('model', '')},{item.get('input_tokens', 0)},"
-                f"{item.get('output_tokens', 0)},{item.get('cost', 0)}"
-            )
+        csv_lines = ["service,total_cost"]
+        by_service = cost_data.get("by_service", [])
+        for item in by_service:
+            csv_lines.append(f"{item.get('service', '')},{item.get('cost', 0)}")
+        total_cost = cost_data.get("total_cost", 0)
+        csv_lines.append(f"Total,{total_cost}")
         return {"format": "csv", "data": "\n".join(csv_lines)}
     
     return {"format": "json", "data": cost_data}
@@ -1620,6 +1910,29 @@ async def _get_dashboard_client():
             transport=httpx.AsyncHTTPTransport(retries=2),
         )
     return _dashboard_client
+
+
+def _normalize_model_name(name: str) -> str:
+    """
+    标准化模型名称，解决输入/输出名称不一致的问题
+    """
+    import re
+    
+    name = name.strip()
+    
+    # 匹配 "Claude Sonnet X.X" 格式，转换为 "Claude X.X Sonnet"
+    pattern1 = r"^(Claude)\s+(Sonnet|Haiku|Opus)\s+(\d+\.?\d*)$"
+    match = re.match(pattern1, name, re.IGNORECASE)
+    if match:
+        return f"{match.group(1)} {match.group(3)} {match.group(2)}"
+    
+    # 匹配 "Claude X Sonnet" 格式，保持不变
+    pattern2 = r"^(Claude)\s+(\d+\.?\d*)\s+(Sonnet|Haiku|Opus)$"
+    match = re.match(pattern2, name, re.IGNORECASE)
+    if match:
+        return f"{match.group(1)} {match.group(2)} {match.group(3)}"
+    
+    return name
 
 
 def _parse_rates_rsc_data(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -1713,15 +2026,20 @@ def _parse_rates_rsc_data(data: Dict[str, Any]) -> Dict[str, Any]:
                 
                 clean_name = model_name.replace("*", "").strip()
                 
+                # 标准化模型名称（解决输入/输出名称不一致的问题）
+                # 例如：输入是 "Claude Sonnet 3.7"，输出是 "Claude 3.7 Sonnet"
+                clean_name = _normalize_model_name(clean_name)
+                
                 # 根据费率位置和单位判断分类
-                if "1M tokens" in unit:
+                # 支持 1K tokens 和 1M tokens 两种单位
+                if "tokens" in unit.lower():
                     if llm_output_pos > 0 and rate_pos > llm_output_pos:
                         result["llm_gateway_output"].append({
                             "model": clean_name,
                             "rate": rate,
                             "unit": unit
                         })
-                    else:
+                    elif llm_input_pos > 0 and rate_pos > llm_input_pos:
                         result["llm_gateway_input"].append({
                             "model": clean_name,
                             "rate": rate,

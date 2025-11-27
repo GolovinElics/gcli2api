@@ -48,6 +48,46 @@
             --modal-overlay: rgba(0, 0, 0, 0.7);
         }
 
+        /* 金额动态特效 - 余额红色闪烁 */
+        @keyframes balancePulse {
+            0%, 100% { text-shadow: 0 0 5px rgba(255, 77, 77, 0.5); }
+            50% { text-shadow: 0 0 20px rgba(255, 77, 77, 0.8), 0 0 30px rgba(255, 77, 77, 0.4); }
+        }
+        
+        /* 金额动态特效 - 消费绿色流动 */
+        @keyframes spendGlow {
+            0%, 100% { text-shadow: 0 0 5px rgba(40, 167, 69, 0.5); }
+            50% { text-shadow: 0 0 15px rgba(40, 167, 69, 0.8), 0 0 25px rgba(40, 167, 69, 0.4); }
+        }
+        
+        /* 数字跳动效果 */
+        @keyframes numberBounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        .balance-amount {
+            color: #ff4d4d !important;
+            animation: balancePulse 2s ease-in-out infinite, numberBounce 3s ease-in-out infinite;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .spend-amount {
+            color: #28a745 !important;
+            animation: spendGlow 2s ease-in-out infinite, numberBounce 3s ease-in-out infinite 0.5s;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        /* 暗黑模式下模型标签适配 */
+        [data-theme="dark"] .model-chip {
+            background: var(--card-bg) !important;
+            border-color: var(--border-color) !important;
+        }
+        
+        [data-theme="dark"] .model-chip .model-ctx {
+            color: var(--text-secondary) !important;
+        }
+
         /* 暗黑模式下的额外样式覆盖 */
         [data-theme="dark"] .config-input,
         [data-theme="dark"] .filter-select,
@@ -1159,10 +1199,11 @@
 
         .filter-select {
             padding: 8px 12px;
-            border: 2px solid #ddd;
+            border: 2px solid var(--border-color);
             border-radius: 4px;
             font-size: 14px;
-            background-color: white;
+            background-color: var(--input-bg);
+            color: var(--text-color);
         }
 
         .filter-select:focus {
@@ -1180,21 +1221,22 @@
         }
 
         .pagination-info {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 14px;
         }
 
         .pagination-btn {
             padding: 8px 12px;
-            border: 1px solid #ddd;
-            background: white;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-color);
             cursor: pointer;
             border-radius: 4px;
             font-size: 14px;
         }
 
         .pagination-btn:hover:not(:disabled) {
-            background: #f8f9fa;
+            background: var(--input-bg);
             border-color: #4285f4;
         }
 
@@ -1533,15 +1575,15 @@
         }
 
         .usage-info-item {
-            background-color: #ffffff;
+            background-color: var(--card-bg);
             padding: 8px;
             border-radius: 4px;
-            border: 1px solid #dee2e6;
+            border: 1px solid var(--border-color);
         }
 
         .usage-info-label {
             font-weight: bold;
-            color: #666;
+            color: var(--text-secondary);
             display: block;
             margin-bottom: 2px;
         }
@@ -1550,12 +1592,12 @@
         .table tbody td { padding: 8px; border-bottom: 1px solid var(--border-color); color: var(--text-color); transition: color 0.3s ease; }
         .table tbody tr:nth-child(odd) { background: var(--table-stripe); }
         .table tbody tr:hover { background: var(--table-hover); }
-        .ranking-container { background:#ffffff; border:1px solid #dee2e6; border-radius:8px; padding:12px; }
+        .ranking-container { background:var(--card-bg); border:1px solid var(--border-color); border-radius:8px; padding:12px; }
         .ranking-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; font-size:14px; }
         .ranking-list { display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; }
         .ranking-item { display:flex; align-items:center; gap:12px; }
-        .ranking-label { min-width:200px; font-size:12px; color:#333; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .ranking-bar { flex:1; height:18px; background:#f1f3f5; border-radius:9px; position:relative; overflow:hidden; }
+        .ranking-label { min-width:200px; font-size:12px; color:var(--text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .ranking-bar { flex:1; height:18px; background:var(--input-bg); border-radius:9px; position:relative; overflow:hidden; }
         .ranking-bar-success { position:absolute; left:0; top:0; height:100%; background:#4caf50; }
         .ranking-bar-fail { position:absolute; top:0; height:100%; background:#dc3545; }
         .ranking-count { width:60px; text-align:right; font-size:12px; color:#666; }
@@ -1565,8 +1607,8 @@
 
         /* 速率限制样式 */
         .rate-limit-card {
-            background: #ffffff;
-            border: 1px solid #e1e4e8;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 16px;
             margin-bottom: 16px;
@@ -1575,6 +1617,10 @@
         
         .rate-limit-card:hover {
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        [data-theme="dark"] .rate-limit-card:hover {
+            box-shadow: 0 2px 8px rgba(255,255,255,0.1);
         }
         
         .rate-limit-header {
@@ -1853,6 +1899,19 @@
         .switch input:checked + .slider:before {
             transform: translateX(18px);
         }
+
+        /* 暗黑模式下的开关按钮 */
+        [data-theme="dark"] .slider {
+            background-color: #475569;
+        }
+
+        [data-theme="dark"] .slider:before {
+            background-color: var(--container-bg);
+        }
+
+        [data-theme="dark"] .switch input:checked + .slider {
+            background-color: #34d399;
+        }
     </style>
 </head>
 
@@ -1965,26 +2024,26 @@
                 </div>
 
                 <!-- 使用说明 -->
-                <div class="config-group">
-                    <h4>使用说明</h4>
-                    <div class="config-info">
-                        <strong>环境变量格式：</strong>
-                        <ul>
-                            <li><code>GCLI_CREDS_1</code>, <code>GCLI_CREDS_2</code>, ... (编号格式)</li>
-                            <li><code>GCLI_CREDS_项目名1</code>, <code>GCLI_CREDS_项目名2</code>, ... (项目名格式)</li>
+                <div class="config-group" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+                    <h4 style="color: var(--text-color); margin-bottom: 12px;">使用说明</h4>
+                    <div class="config-info" style="color: var(--text-secondary);">
+                        <strong style="color: var(--text-color);">环境变量格式：</strong>
+                        <ul style="color: var(--text-secondary);">
+                            <li><code style="background: var(--code-bg); color: var(--text-color); padding: 2px 6px; border-radius: 3px;">GCLI_CREDS_1</code>, <code style="background: var(--code-bg); color: var(--text-color); padding: 2px 6px; border-radius: 3px;">GCLI_CREDS_2</code>, ... (编号格式)</li>
+                            <li><code style="background: var(--code-bg); color: var(--text-color); padding: 2px 6px; border-radius: 3px;">GCLI_CREDS_项目名1</code>, <code style="background: var(--code-bg); color: var(--text-color); padding: 2px 6px; border-radius: 3px;">GCLI_CREDS_项目名2</code>, ... (项目名格式)</li>
                         </ul>
 
-                        <strong>环境变量值：</strong> 完整的认证文件JSON内容
+                        <strong style="color: var(--text-color);">环境变量值：</strong> 完整的认证文件JSON内容
 
                         <br><br>
-                        <strong>示例：</strong>
-                        <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 11px;">
+                        <strong style="color: var(--text-color);">示例：</strong>
+                        <pre style="background: var(--code-bg); color: var(--text-color); padding: 10px; border-radius: 4px; font-size: 11px; border: 1px solid var(--border-color);">
 export GCLI_CREDS_1='{"client_id":"your-client-id","client_secret":"your-secret","refresh_token":"your-token","token_uri":"https://oauth2.googleapis.com/token","project_id":"your-project"}'
 export GCLI_CREDS_myproject='{"client_id":"...","project_id":"myproject",...}'
 export AUTO_LOAD_ENV_CREDS=true  # 启用程序启动时自动导入</pre>
 
-                        <strong>Docker部署示例：</strong>
-                        <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 11px;">
+                        <strong style="color: var(--text-color);">Docker部署示例：</strong>
+                        <pre style="background: var(--code-bg); color: var(--text-color); padding: 10px; border-radius: 4px; font-size: 11px; border: 1px solid var(--border-color);">
 docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
            -e AUTO_LOAD_ENV_CREDS=true \
            your-image</pre>
@@ -2142,6 +2201,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                                 <option value="all">全部状态</option>
                                 <option value="enabled">已启用</option>
                                 <option value="disabled">已禁用</option>
+                                <option value="invalid">失效密钥</option>
                             </select>
                         </div>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -2149,6 +2209,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                             <button class="btn btn-sm" onclick="enableAllKeys()" style="background: transparent; color: #4285f4; border: 1px solid #4285f4;">启用全部</button>
                             <button class="btn btn-sm" onclick="disableAllKeys()" style="background: transparent; color: #dc3545; border: 1px solid #dc3545;">禁用全部</button>
                             <button class="btn btn-sm" onclick="deleteAutoDisabledKeys()" style="background: transparent; color: #ffc107; border: 1px solid #ffc107;">删除自动禁用密钥</button>
+                            <button class="btn btn-sm" onclick="cleanupKeyStats()" style="background: transparent; color: #17a2b8; border: 1px solid #17a2b8;">🧹 清理过期统计</button>
                         </div>
                     </div>
                     
@@ -2233,6 +2294,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
 
                 <div class="manage-actions">
                     <button class="refresh-btn" onclick="refreshUsageStats()">刷新统计</button>
+                    <button class="btn" onclick="checkInvalidKeys()" style="background:#6c757d">检查失效密钥</button>
+                    <button class="btn" onclick="deleteInvalidKeys()" style="background:#dc3545">移除失效密钥数据</button>
                 </div>
 
                 <div class="config-group">
@@ -2259,17 +2322,17 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 </div>
 
                 <!-- 使用说明 -->
-                <div class="config-group">
-                    <h4>使用说明</h4>
-                    <div class="config-info">
-                        <strong>统计范围：</strong>
-                        <ul>
-                            <li><strong>所有模型调用次数：</strong>统计所有模型的成功调用总数</li>
-                            <li><strong>配额重置：</strong>每天 UTC 07:00 自动重置调用计数</li>
+                <div class="config-group" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+                    <h4 style="color: var(--text-color); margin-bottom: 12px;">使用说明</h4>
+                    <div class="config-info" style="color: var(--text-secondary);">
+                        <strong style="color: var(--text-color);">统计范围：</strong>
+                        <ul style="color: var(--text-secondary);">
+                            <li><strong style="color: var(--text-color);">所有模型调用次数：</strong>统计所有模型的成功调用总数</li>
+                            <li><strong style="color: var(--text-color);">配额重置：</strong>每天 UTC 07:00 自动重置调用计数</li>
                         </ul>
 
-                        <strong>注意：</strong>
-                        <ul>
+                        <strong style="color: var(--text-color);">注意：</strong>
+                        <ul style="color: var(--text-secondary);">
                             <li>只统计返回正常响应的API调用，报错的调用不计入统计</li>
                             <li>统计数据持久化保存在 creds_state.toml 文件中</li>
                             <li>支持每个凭证文件独立统计和配额管理</li>
@@ -2694,11 +2757,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     <div id="accountSubUsage" class="hidden">
                         <div class="config-group">
                             <h4>使用量统计</h4>
-                            <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
-                                <select id="accountUsageWindow" class="config-input" style="width: auto;" onchange="loadAccountUsage(true)">
-                                    <option value="week">最近 7 天</option>
-                                    <option value="month" selected>最近 30 天</option>
-                                </select>
+                            <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;">
                                 <button class="btn btn-sm" onclick="loadAccountUsage(true)">刷新</button>
                             </div>
                             <div id="accountUsageContent">
@@ -2711,15 +2770,7 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     <div id="accountSubCost" class="hidden">
                         <div class="config-group">
                             <h4>成本分析</h4>
-                            <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
-                                <select id="accountCostWindow" class="config-input" style="width: auto;" onchange="loadAccountCost(true)">
-                                    <option value="week">最近 7 天</option>
-                                    <option value="month" selected>最近 30 天</option>
-                                </select>
-                                <select id="accountCostGroupBy" class="config-input" style="width: auto;" onchange="loadAccountCost(true)">
-                                    <option value="model" selected>按模型</option>
-                                    <option value="date">按日期</option>
-                                </select>
+                            <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;">
                                 <button class="btn btn-sm" onclick="loadAccountCost(true)">刷新</button>
                                 <button class="btn btn-sm" onclick="exportAccountCost('json')" style="background: #17a2b8;">导出 JSON</button>
                                 <button class="btn btn-sm" onclick="exportAccountCost('csv')" style="background: #17a2b8;">导出 CSV</button>
@@ -2933,6 +2984,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             if (tabName === 'usage') {
                 refreshUsageStats();
                 refreshLogSummary();
+                // 自动检查失效密钥
+                checkInvalidKeys();
             }
             if (tabName === 'config') {
                 loadConfig();
@@ -3001,11 +3054,30 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     console.error('Failed to load key config:', e);
                 }
                 
-                // 更新统计信息
+                // 更新统计信息 - 修复失效判断逻辑
                 const total = data.total || 0;
                 const enabled = data.active || 0;
-                const manualDisabled = data.disabled || 0;
-                const autoDisabled = 0; // 暂时设为0，后续可以从API获取
+                
+                // 计算失效密钥数量（从keys数组中统计）
+                let invalidCount = 0;
+                let manualDisabled = 0;
+                if (data.keys && Array.isArray(data.keys)) {
+                    data.keys.forEach(key => {
+                        if (!key.enabled) {
+                            // 检查是否是失效密钥（有错误信息或特定状态）
+                            if (key.status === 'invalid' || key.error || key.exhausted) {
+                                invalidCount++;
+                            } else {
+                                manualDisabled++;
+                            }
+                        }
+                    });
+                } else {
+                    // 回退到原有逻辑
+                    manualDisabled = data.disabled || 0;
+                }
+                
+                const autoDisabled = invalidCount;
                 
                 document.getElementById('modalKeyTotal').textContent = total;
                 document.getElementById('modalKeyTotal2').textContent = total;
@@ -3048,21 +3120,51 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             
             let html = '';
             pageKeys.forEach(key => {
-                const statusClass = key.enabled ? 'enabled' : 'disabled';
-                const statusText = key.enabled ? '已启用' : '已禁用';
-                const statusColor = key.enabled ? '#28a745' : '#dc3545';
+                // 判断密钥状态
+                const isInvalid = key.status === 'invalid' || key.error || key.exhausted;
+                const statusClass = key.enabled ? 'enabled' : (isInvalid ? 'invalid' : 'disabled');
+                let statusText = key.enabled ? '已启用' : '已禁用';
+                let statusColor = key.enabled ? '#28a745' : '#dc3545';
+                
+                // 如果是失效密钥，显示特殊状态
+                if (isInvalid && !key.enabled) {
+                    statusText = '失效';
+                    statusColor = '#ffc107';
+                }
+                
                 const actionText = key.enabled ? '禁用' : '启用';
                 const actionColor = key.enabled ? '#dc3545' : '#28a745';
                 
                 // 显示完整密钥，不隐匿
                 const fullKey = key.key || key.masked_key || '';
                 
+                // 禁用原因
+                let disableReason = '-';
+                if (!key.enabled) {
+                    if (isInvalid) {
+                        disableReason = key.error || '密钥失效';
+                    } else {
+                        disableReason = key.disable_reason || '手动禁用';
+                    }
+                }
+                
+                // 禁用时间
+                let disableTime = '-';
+                if (!key.enabled && key.disable_time) {
+                    try {
+                        const date = new Date(key.disable_time * 1000);
+                        disableTime = date.toLocaleString('zh-CN');
+                    } catch (e) {
+                        disableTime = '-';
+                    }
+                }
+                
                 html += `<tr>
                     <td style="color: var(--text-secondary);">#${key.index}</td>
                     <td><code style="font-size: 11px; color: var(--text-color); word-break: break-all;">${fullKey}</code></td>
                     <td><span class="status-badge ${statusClass}" style="background: ${statusColor}; color: white; padding: 2px 10px; border-radius: 4px; font-size: 12px;">${statusText}</span></td>
-                    <td style="color: var(--text-muted);">-</td>
-                    <td style="color: var(--text-muted);">-</td>
+                    <td style="color: var(--text-muted); font-size: 12px;">${disableReason}</td>
+                    <td style="color: var(--text-muted); font-size: 12px;">${disableTime}</td>
                     <td style="text-align: right;">
                         <button onclick="toggleKeyStatusModal(${key.index}, ${!key.enabled})" style="background: transparent; color: ${actionColor}; border: 1px solid ${actionColor}; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">${actionText}</button>
                     </td>
@@ -3179,6 +3281,27 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         // 删除自动禁用的密钥
         async function deleteAutoDisabledKeys() {
             alert('此功能暂未实现');
+        }
+
+        // 清理过期密钥的统计数据
+        async function cleanupKeyStats() {
+            if (!confirm('确定要清理过期密钥的统计数据吗？\n\n这将删除已移除密钥的历史统计记录。')) return;
+            try {
+                const response = await fetch('/api/keys/cleanup-stats', {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showStatus(data.message || '统计数据清理完成', 'success');
+                    loadKeyManagementModal();
+                } else {
+                    showStatus('清理失败: ' + (data.detail || '未知错误'), 'error');
+                }
+            } catch (error) {
+                console.error('Failed to cleanup key stats:', error);
+                showStatus('清理失败: ' + error.message, 'error');
+            }
         }
 
         // ==================== 速率限制相关函数 ====================
@@ -5108,6 +5231,40 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             }
         }
 
+        async function checkInvalidKeys(){
+            try{
+                const res = await fetch('/keys/invalid', { headers: getAuthHeaders() });
+                const data = await res.json();
+                const list = (data.invalid_keys||[]).map(it=>it.key).join(', ');
+                const msg = `失效密钥 ${data.invalid_keys?.length||0} 个${list? '：'+list: ''}`;
+                showStatus(msg, 'info');
+            }catch(e){
+                showStatus('检查失效密钥失败: '+e.message, 'error');
+            }
+        }
+
+        async function deleteInvalidKeys(){
+            if (!confirm('确定要移除所有失效密钥的数据吗？\n\n这将：\n1. 清除失效密钥的日志记录\n2. 清除失效密钥的统计数据\n3. 将失效密钥加入忽略列表\n\n注意：配置中的有效密钥不会被移除！')) {
+                return;
+            }
+            try{
+                const res = await fetch('/keys/delete-invalid', { method: 'POST', headers: getAuthHeaders() });
+                const data = await res.json();
+                if(res.ok){
+                    showStatus(`已移除失效密钥数据：${data.invalid_deleted||0} 个密钥，已加入忽略列表 ${data.ignored_count||0} 项`, 'success');
+                    // 同步刷新日志统计与使用统计列表
+                    await refreshLogSummary();
+                    await refreshUsageStats();
+                    // 重新检查失效密钥
+                    await checkInvalidKeys();
+                }else{
+                    showStatus('移除失败: '+(data.detail||'未知错误'), 'error');
+                }
+            }catch(e){
+                showStatus('移除失效密钥数据失败: '+e.message, 'error');
+            }
+        }
+
         async function refreshLogSummary() {
             const model = document.getElementById('modelFilter').value || '';
             const key = (document.getElementById('keyFilter').value || '').trim();
@@ -5117,10 +5274,16 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             if (model) params.push('model=' + encodeURIComponent(model));
             if (key) params.push('key=' + encodeURIComponent(key));
             if (only) params.push('only=' + encodeURIComponent(only));
+            // 添加时间戳防止缓存
+            params.push('_t=' + Date.now());
             if (params.length) url += '?' + params.join('&');
+            
+            // 为全部数据的请求也添加时间戳
+            const urlAll = '/usage/aggregated?_t=' + Date.now();
+            
             const [resFiltered, resAll] = await Promise.all([
                 fetch(url, { headers: getAuthHeaders() }),
-                fetch('/usage/aggregated', { headers: getAuthHeaders() })
+                fetch(urlAll, { headers: getAuthHeaders() })
             ]);
             const data = await resFiltered.json();
             const dataAll = await resAll.json();
@@ -5810,6 +5973,9 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             const enableStream = !!document.getElementById('playgroundStream')?.checked;
             if (enableStream) body.stream = true;
             
+            // 显示请求预览
+            showRequestPreview(body, selectedKey);
+            
             try{
                 playgroundTestInProgress = true;
                 playgroundAbortController = new AbortController();
@@ -5956,7 +6122,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             el.style.display = show ? 'block' : 'none';
             const map = {
                 'playgroundMessagesWrap': 'playgroundMessagesToggle',
-                'playgroundToolsWrap': 'playgroundToolsToggle'
+                'playgroundToolsWrap': 'playgroundToolsToggle',
+                'requestPreviewWrap': 'requestPreviewToggle'
             };
             const tid = map[id];
             const t = tid ? document.getElementById(tid) : null;
@@ -5964,14 +6131,16 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         }
 
         function collapseAfterSend(){
-            ['playgroundMessagesWrap','playgroundToolsWrap'].forEach(id=>{
+            ['playgroundMessagesWrap','playgroundToolsWrap','requestPreviewWrap'].forEach(id=>{
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
             });
             const msgToggle = document.getElementById('playgroundMessagesToggle');
             const toolsToggle = document.getElementById('playgroundToolsToggle');
+            const previewToggle = document.getElementById('requestPreviewToggle');
             if (msgToggle) msgToggle.textContent = '▶';
             if (toolsToggle) toolsToggle.textContent = '▶';
+            if (previewToggle) previewToggle.textContent = '▶';
         }
         
         function getModelCategory(id){
@@ -5982,8 +6151,196 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             return 'Other';
         }
 
+        // ==================== 请求预览相关函数 ====================
+        function showRequestPreview(body, selectedKey) {
+            const section = document.getElementById('requestPreviewSection');
+            if (!section) return;
+            
+            // 显示预览区域
+            section.style.display = 'block';
+            
+            // 更新 URL
+            const urlEl = document.getElementById('previewUrl');
+            if (urlEl) {
+                urlEl.textContent = window.location.origin + '/v1/chat/completions';
+            }
+            
+            // 更新请求头
+            const headersEl = document.getElementById('previewHeaders');
+            if (headersEl) {
+                const headers = { ...getAuthHeaders() };
+                if (selectedKey) {
+                    headers['X-API-Key'] = selectedKey;
+                }
+                headersEl.textContent = JSON.stringify(headers, null, 2);
+            }
+            
+            // 更新请求体
+            const bodyEl = document.getElementById('previewBody');
+            if (bodyEl) {
+                bodyEl.value = JSON.stringify(body, null, 2);
+            }
+        }
+
+        function copyRequestBody() {
+            const bodyEl = document.getElementById('previewBody');
+            if (!bodyEl) return;
+            
+            bodyEl.select();
+            document.execCommand('copy');
+            showStatus('请求体已复制到剪贴板', 'success');
+        }
+
+        function editRequestBody() {
+            const bodyEl = document.getElementById('previewBody');
+            if (!bodyEl) return;
+            
+            // 使请求体可编辑
+            bodyEl.readOnly = false;
+            bodyEl.style.backgroundColor = '#2d2d2d';
+            bodyEl.style.border = '2px solid #4285f4';
+            showStatus('请求体现在可编辑，编辑完成后点击"发送"按钮', 'info');
+        }
+
+        async function sendCustomRequest() {
+            const bodyEl = document.getElementById('previewBody');
+            if (!bodyEl) return;
+            
+            try {
+                const body = JSON.parse(bodyEl.value);
+                
+                // 如果已有测试在进行，提示用户
+                if (playgroundTestInProgress) {
+                    if (!confirm('已有测试正在进行，是否取消并开始新测试？')) {
+                        return;
+                    }
+                    if (playgroundAbortController) {
+                        playgroundAbortController.abort();
+                    }
+                }
+                
+                playgroundTestInProgress = true;
+                playgroundAbortController = new AbortController();
+                
+                collapseAfterSend();
+                showStatus('测试进行中...（使用自定义请求体）', 'info');
+                
+                // 构建请求头
+                const headersEl = document.getElementById('previewHeaders');
+                let headers = { ...getAuthHeaders() };
+                if (headersEl) {
+                    try {
+                        const customHeaders = JSON.parse(headersEl.textContent);
+                        headers = { ...headers, ...customHeaders };
+                    } catch (e) {
+                        console.warn('Failed to parse custom headers:', e);
+                    }
+                }
+                
+                const enableStream = !!body.stream;
+                
+                const res = await fetch('/v1/chat/completions', { 
+                    method: 'POST', 
+                    headers: headers, 
+                    body: JSON.stringify(body),
+                    signal: playgroundAbortController.signal
+                });
+                
+                if (!enableStream) {
+                    const data = await res.json();
+                    if (!res.ok) { throw new Error(data.detail || '请求失败'); }
+                    const first = ((data.choices || [])[0] || {});
+                    let msg = ((first.message || {}).content);
+                    if (Array.isArray(msg)) {
+                        msg = msg.map(p => (typeof p === 'string') ? p : (p && (p.text || ''))).join('');
+                    }
+                    msg = msg || '';
+                    
+                    // 更新显示区域
+                    document.getElementById('playgroundOutputContent').textContent = msg;
+                    document.getElementById('playgroundRawJson').textContent = JSON.stringify(data, null, 2);
+                    
+                    // 显示结果弹窗
+                    showPlaygroundResult(msg, data);
+                    showStatus('测试完成', 'success');
+                } else {
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+                    let buf = '';
+                    const outEl = document.getElementById('playgroundOutputContent');
+                    const rawEl = document.getElementById('playgroundRawJson');
+                    
+                    // 清空之前的内容
+                    if (outEl) outEl.textContent = '';
+                    if (rawEl) rawEl.textContent = '';
+                    
+                    let rawBuf = '';
+                    let fullMessage = '';
+                    let lastData = null;
+                    
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        buf += decoder.decode(value, { stream: true });
+                        const parts = buf.split('\n\n');
+                        buf = parts.pop();
+                        for (const part of parts) {
+                            const line = part.trim();
+                            if (!line.startsWith('data:')) continue;
+                            const payload = line.slice(5).trim();
+                            if (payload === '[DONE]') continue;
+                            try {
+                                const obj = JSON.parse(payload);
+                                lastData = obj;
+                                const ch = (obj.choices || [])[0] || {};
+                                const delta = ch.delta || {};
+                                const content = delta.content || '';
+                                if (content) {
+                                    fullMessage += content;
+                                    if (outEl) outEl.textContent += content;
+                                }
+                                rawBuf += payload + "\n\n";
+                                if (rawEl) rawEl.textContent = rawBuf;
+                            } catch (e) {}
+                        }
+                    }
+                    
+                    // 显示结果弹窗
+                    showPlaygroundResult(fullMessage, lastData);
+                    showStatus('测试完成', 'success');
+                }
+            } catch (e) {
+                if (e.name === 'AbortError') {
+                    showStatus('测试已取消', 'info');
+                } else if (e instanceof SyntaxError) {
+                    showStatus('请求体 JSON 格式错误: ' + e.message, 'error');
+                } else {
+                    showStatus('测试失败: ' + e.message, 'error');
+                }
+            } finally {
+                playgroundTestInProgress = false;
+                playgroundAbortController = null;
+                
+                // 恢复请求体为只读
+                const bodyEl = document.getElementById('previewBody');
+                if (bodyEl) {
+                    bodyEl.readOnly = true;
+                    bodyEl.style.backgroundColor = '#1e1e1e';
+                    bodyEl.style.border = '1px solid var(--border-color)';
+                }
+            }
+        }
+
         function getCatColors(cat){
-            const m = {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const m = isDark ? {
+                // 暗黑模式颜色
+                Anthropic: { bg:'rgba(111, 66, 193, 0.2)', border:'#9f7aea', text:'#d6bcfa' },
+                OpenAI: { bg:'rgba(31, 111, 235, 0.2)', border:'#63b3ed', text:'#90cdf4' },
+                Google: { bg:'rgba(43, 147, 72, 0.2)', border:'#68d391', text:'#9ae6b4' },
+                Other: { bg:'rgba(160, 160, 160, 0.2)', border:'#a0aec0', text:'#cbd5e0' }
+            } : {
+                // 亮色模式颜色
                 Anthropic: { bg:'#f2e9ff', border:'#6f42c1', text:'#4b2e83' },
                 OpenAI: { bg:'#e7f0ff', border:'#1f6feb', text:'#1f3f8a' },
                 Google: { bg:'#e8f7ee', border:'#2b9348', text:'#1f6b2e' },
@@ -6010,9 +6367,9 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 const colors = getCatColors(cat);
                 const meta = (modelMetaFromConfig[m] || (queriedModels.meta||{})[m] || {});
                 const ctx = formatTokensShort(meta.context_length);
-                chip.className = 'badge';
-                chip.style = `display:inline-flex; align-items:center; gap:6px; background:${colors.bg}; color:${colors.text}; padding:4px 10px; border-radius:12px; margin:2px; font-size:12px; border-left:4px solid ${colors.border}`;
-                chip.innerHTML = `<span>${m}</span><span style="font-size:11px; color:#555">${ctx}</span>`;
+                chip.className = 'badge model-chip';
+                chip.style = `display:inline-flex; align-items:center; gap:6px; background:${colors.bg}; color:${colors.text}; padding:4px 10px; border-radius:12px; margin:2px; font-size:12px; border-left:4px solid ${colors.border}; transition: all 0.2s ease;`;
+                chip.innerHTML = `<span>${m}</span><span class="model-ctx" style="font-size:11px; color:${colors.text}; opacity:0.7;">${ctx}</span>`;
                 wrap.appendChild(chip);
             });
         }
@@ -6130,9 +6487,10 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         let accountAutoRefreshTimer = null;
         const accountCache = {
             info: { ts: 0, html: '' },
+            apiKeys: { ts: 0, html: '' },  // API keys 独立缓存
             billing: { ts: 0, html: '' },
-            usage: {},  // key: window_size -> { ts, html }
-            cost: {},   // key: window_size|group_by -> { ts, html }
+            usage: {},  // key: dateParams -> { ts, html }
+            cost: {},   // key: dateParams|group_by -> { ts, html }
             rates: { ts: 0, html: '' }
         };
         function isFresh(ts) { return !!ts && (Date.now() - ts) < ACCOUNT_CACHE_TTL_MS; }
@@ -6152,6 +6510,11 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             }, ACCOUNT_CACHE_TTL_MS);
         }
 
+        // 初始化账户管理标签页
+        async function initAccountTab() {
+            await checkAccountSession();
+        }
+
         // 检查账户登录状态
         async function checkAccountSession() {
             try {
@@ -6161,11 +6524,13 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 if (data.logged_in) {
                     document.getElementById('accountLoginSection').classList.add('hidden');
                     document.getElementById('accountLoggedInSection').classList.remove('hidden');
-                    // 预加载四个子页数据（并写入缓存），提升切换体验
-                    loadAccountOverview(true);
-                    loadAccountUsage(true);
-                    loadAccountCost(true);
-                    loadAccountRates(true);
+                    // 并发预加载所有子页数据（不阻塞，写入缓存），提升切换体验
+                    Promise.all([
+                        loadAccountOverview(false),
+                        loadAccountUsage(false),
+                        loadAccountCost(false),
+                        loadAccountRates(false)
+                    ]).catch(e => console.error('Failed to preload account data:', e));
                     // 默认显示概览
                     switchAccountSubTab('overview');
                 } else {
@@ -6242,6 +6607,11 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 const balEl = document.getElementById('accountBalanceContent');
                 if (infoEl && accountCache.info.html && isFresh(accountCache.info.ts)) {
                     infoEl.innerHTML = accountCache.info.html;
+                    const sek = document.getElementById('apiKeysSection');
+                    if (sek && accountCache.apiKeys && accountCache.apiKeys.html && isFresh(accountCache.apiKeys.ts)) {
+                        sek.innerHTML = accountCache.apiKeys.html;
+                    }
+                    loadAccountApiKeys(false);
                 } else {
                     loadAccountInfo();
                 }
@@ -6251,22 +6621,20 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     loadAccountBilling();
                 }
             } else if (tabName === 'usage') {
-                const key = (document.getElementById('accountUsageWindow')?.value || 'month');
+                // 优先使用缓存
                 const el = document.getElementById('accountUsageContent');
-                const cached = accountCache.usage[key];
-                if (el && cached && cached.html && isFresh(cached.ts)) {
-                    el.innerHTML = cached.html;
+                const cacheKey = 'default';
+                if (el && accountCache.usage[cacheKey] && accountCache.usage[cacheKey].html && isFresh(accountCache.usage[cacheKey].ts)) {
+                    el.innerHTML = accountCache.usage[cacheKey].html;
                 } else {
                     loadAccountUsage();
                 }
             } else if (tabName === 'cost') {
-                const w = (document.getElementById('accountCostWindow')?.value || 'month');
-                const g = (document.getElementById('accountCostGroupBy')?.value || 'model');
-                const key = `${w}|${g}`;
+                // 优先使用缓存
                 const el = document.getElementById('accountCostContent');
-                const cached = accountCache.cost[key];
-                if (el && cached && cached.html && isFresh(cached.ts)) {
-                    el.innerHTML = cached.html;
+                const cacheKey = 'default';
+                if (el && accountCache.cost[cacheKey] && accountCache.cost[cacheKey].html && isFresh(accountCache.cost[cacheKey].ts)) {
+                    el.innerHTML = accountCache.cost[cacheKey].html;
                 } else {
                     loadAccountCost();
                 }
@@ -6287,12 +6655,14 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             loadAccountBilling(force);
         }
 
-        // 加载账户信息
+        // 加载账户信息（快速响应，不包含 API keys）
         async function loadAccountInfo(force = false) {
             const el = document.getElementById('accountInfoContent');
             if (!el) return;
             if (!force && accountCache.info.html && isFresh(accountCache.info.ts)) {
                 el.innerHTML = accountCache.info.html;
+                // 异步加载 API keys（不阻塞）
+                loadAccountApiKeys(force);
                 return;
             }
             el.innerHTML = '<div class="loading">加载中...</div>';
@@ -6306,6 +6676,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     throw new Error('加载失败');
                 }
                 const data = await res.json();
+                
+                // 基础信息 HTML（立即显示，不等待 API keys）
                 const html = `
                     <div style="display: grid; gap: 12px;">
                         <div><strong>邮箱:</strong> ${data.email || '-'}</div>
@@ -6313,12 +6685,87 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         <div><strong>类型:</strong> ${data.customer_type || '-'}</div>
                         <div><strong>创建时间:</strong> ${data.created ? new Date(data.created).toLocaleDateString() : '-'}</div>
                         <div><strong>支付方式:</strong> ${data.cc_brand ? data.cc_brand.toUpperCase() + ' ****' + data.cc_last4 : '未设置'}</div>
+                        <div id="apiKeysSection" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                            <div class="loading">正在加载 API Keys...</div>
+                        </div>
                     </div>
                 `;
                 accountCache.info = { ts: Date.now(), html };
                 el.innerHTML = html;
+                
+                // 异步加载 API keys（不阻塞基础信息显示）
+                const sek = document.getElementById('apiKeysSection');
+                if (sek && accountCache.apiKeys && accountCache.apiKeys.html && isFresh(accountCache.apiKeys.ts)) {
+                    sek.innerHTML = accountCache.apiKeys.html;
+                }
+                loadAccountApiKeys(false);
             } catch (e) {
                 el.innerHTML = `<div class="status error">加载失败: ${e.message}</div>`;
+            }
+        }
+        
+        // 独立加载 API Keys（异步，不阻塞账户信息，带缓存，带超时）
+        async function loadAccountApiKeys(force = false) {
+            const el = document.getElementById('apiKeysSection');
+            if (!el) return;
+            
+            // 使用缓存
+            if (!force && accountCache.apiKeys && accountCache.apiKeys.html && isFresh(accountCache.apiKeys.ts)) {
+                el.innerHTML = accountCache.apiKeys.html;
+                return;
+            }
+            
+            try {
+                // 添加 15 秒超时
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                
+                const res = await fetch('/api/account/api-keys' + (force ? '?force=1' : ''), { 
+                    headers: getAuthHeaders(),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                if (!res.ok) throw new Error('加载 API Keys 失败');
+                const data = await res.json();
+                
+                let apiKeysHtml = '';
+                if (data.api_keys && data.api_keys.length > 0) {
+                    apiKeysHtml = `
+                        <strong style="display: block; margin-bottom: 12px;">API Keys (${data.api_keys.length}):</strong>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            ${data.api_keys.map(key => `
+                                <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <span style="font-weight: 500; color: var(--text-color);">${key.name || 'Unnamed Key'}</span>
+                                        <span style="font-size: 12px; color: ${key.is_disabled ? 'var(--error-color)' : 'var(--success-color)'};">
+                                            ${key.is_disabled ? '已禁用' : '已启用'}
+                                        </span>
+                                    </div>
+                                    <div style="font-family: monospace; font-size: 13px; background: var(--bg-color); padding: 8px; border-radius: 4px; word-break: break-all; color: var(--text-color);">
+                                        ${key.api_key || '-'}
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
+                                        <span>项目: ${key.project_name || '-'}</span>
+                                        <span>创建: ${key.created ? new Date(key.created).toLocaleDateString() : '-'}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    apiKeysHtml = '<div style="color: var(--text-secondary); font-style: italic;">未找到 API Keys</div>';
+                }
+                
+                if (data.error) {
+                    apiKeysHtml += `<div class="status warning" style="margin-top: 8px;">注意: ${data.error}</div>`;
+                }
+                
+                // 缓存 API keys HTML
+                accountCache.apiKeys = { ts: Date.now(), html: apiKeysHtml };
+                el.innerHTML = apiKeysHtml;
+            } catch (e) {
+                const errorMsg = e.name === 'AbortError' ? '请求超时，请稍后重试' : e.message;
+                el.innerHTML = `<div class="status error">加载 API Keys 失败: ${errorMsg}<br><button class="btn btn-sm" onclick="loadAccountApiKeys(true)" style="margin-top: 8px;">重试</button></div>`;
             }
         }
 
@@ -6341,17 +6788,19 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 const totalSpend = data.total_spend_30_days || 0;
                 
                 let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">';
-                html += '<div style="text-align: center; padding: 20px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
-                html += '<div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">当前余额</div>';
-                html += '<div style="font-size: 32px; font-weight: bold; color: var(--text-color);">$' + balance.toFixed(2) + '</div>';
+                // 余额卡片 - 红色动态效果
+                html += '<div style="text-align: center; padding: 24px; background: linear-gradient(135deg, var(--card-bg) 0%, rgba(255,77,77,0.05) 100%); border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(255,77,77,0.1);">';
+                html += '<div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">💰 当前余额</div>';
+                html += '<div class="balance-amount" style="font-size: 36px; font-weight: bold;">$' + balance.toFixed(5) + '</div>';
                 html += '</div>';
-                html += '<div style="text-align: center; padding: 20px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
-                html += '<div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">30天消费</div>';
-                html += '<div style="font-size: 32px; font-weight: bold; color: var(--text-color);">$' + totalSpend.toFixed(5) + '</div>';
+                // 消费卡片 - 绿色动态效果
+                html += '<div style="text-align: center; padding: 24px; background: linear-gradient(135deg, var(--card-bg) 0%, rgba(40,167,69,0.05) 100%); border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(40,167,69,0.1);">';
+                html += '<div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">📊 30天消费</div>';
+                html += '<div class="spend-amount" style="font-size: 36px; font-weight: bold;">$' + totalSpend.toFixed(5) + '</div>';
                 html += '</div></div>';
                 html += '<div style="margin-top: 16px; text-align: center;">';
-                html += '<a href="https://www.assemblyai.com/dashboard/account/billing" target="_blank" class="btn btn-sm" style="background: #17a2b8;">充值</a>';
-                html += '<button class="btn btn-sm" onclick="loadAccountBilling(true)" style="margin-left: 8px;">刷新</button>';
+                html += '<a href="https://www.assemblyai.com/dashboard/account/billing" target="_blank" class="btn btn-sm" style="background: linear-gradient(135deg, #17a2b8, #138496); border: none; padding: 8px 20px;">💳 充值</a>';
+                html += '<button class="btn btn-sm" onclick="loadAccountBilling(true)" style="margin-left: 8px; padding: 8px 20px;">🔄 刷新</button>';
                 html += '</div>';
                 
                 if (data.error) {
@@ -6365,11 +6814,77 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 el.innerHTML = '<div class="status error">加载失败: ' + e.message + '<br><button class="btn btn-sm" onclick="loadAccountBilling()" style="margin-top: 8px;">重试</button></div>';
             }
         }
+        // 日期选择器切换函数
+        function onUsageWindowChange() {
+            const window_size = document.getElementById('accountUsageWindow')?.value || 'month';
+            const customRange = document.getElementById('usageCustomDateRange');
+            if (customRange) {
+                customRange.style.display = window_size === 'custom' ? 'flex' : 'none';
+            }
+            if (window_size !== 'custom') {
+                loadAccountUsage(true);
+            }
+        }
+        
+        function onCostWindowChange() {
+            const window_size = document.getElementById('accountCostWindow')?.value || 'month';
+            const customRange = document.getElementById('costCustomDateRange');
+            if (customRange) {
+                customRange.style.display = window_size === 'custom' ? 'flex' : 'none';
+            }
+            if (window_size !== 'custom') {
+                loadAccountCost(true);
+            }
+        }
+        
+        // 获取日期范围参数
+        // AssemblyAI API: ending_before 是 exclusive 的，所以需要加一天
+        function getNextDay(dateStr) {
+            const date = new Date(dateStr);
+            date.setDate(date.getDate() + 1);
+            return date.toISOString().split('T')[0];
+        }
+        
+        function getUsageDateParams() {
+            const window_size = document.getElementById('accountUsageWindow')?.value || 'month';
+            if (window_size === 'custom') {
+                const startDate = document.getElementById('usageStartDate')?.value;
+                const endDate = document.getElementById('usageEndDate')?.value;
+                if (startDate && endDate) {
+                    // ending_before 需要是结束日期的第二天（exclusive）
+                    const endingBefore = getNextDay(endDate);
+                    return `starting_on=${startDate}&ending_before=${endingBefore}`;
+                }
+                return 'window_size=month';
+            }
+            return `window_size=${window_size}`;
+        }
+        
+        function getCostDateParams() {
+            const window_size = document.getElementById('accountCostWindow')?.value || 'month';
+            if (window_size === 'custom') {
+                const startDate = document.getElementById('costStartDate')?.value;
+                const endDate = document.getElementById('costEndDate')?.value;
+                if (startDate && endDate) {
+                    // ending_before 需要是结束日期的第二天（exclusive）
+                    const endingBefore = getNextDay(endDate);
+                    return `starting_on=${startDate}&ending_before=${endingBefore}`;
+                }
+                return 'window_size=month';
+            }
+            return `window_size=${window_size}`;
+        }
+
         async function loadAccountUsage(force = false) {
             const el = document.getElementById('accountUsageContent');
             if (!el) return;
-            const window_size = document.getElementById('accountUsageWindow')?.value || 'month';
-            const key = window_size;
+            const key = 'summary';
+            
+            // 强制刷新时清除缓存
+            if (force) {
+                delete accountCache.usage[key];
+            }
+            
             if (!force) {
                 const cached = accountCache.usage[key];
                 if (cached && cached.html && isFresh(cached.ts)) {
@@ -6379,10 +6894,12 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             }
             el.innerHTML = '<div class="loading">加载中...</div>';
             try {
-                const res = await fetch('/api/account/usage?window_size=' + window_size + (force ? '&force=1' : ''), { headers: getAuthHeaders() });
+                // 强制刷新时添加force参数和时间戳防止缓存
+                const timestamp = Date.now();
+                const res = await fetch('/api/account/usage?force=1&_t=' + timestamp, { headers: getAuthHeaders() });
                 if (!res.ok) throw new Error('加载失败');
                 const data = await res.json();
-                console.log('Usage data:', data);
+                console.log('Usage data (force=' + force + '):', data);
                 
                 let html = '<div style="display: grid; gap: 16px;">';
                 
@@ -6394,8 +6911,11 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 html += '<div style="font-size: 14px; color: var(--text-secondary);">Total tokens</div>';
                 html += '</div>';
                 
-                // 归类并复刻使用量分布与列表
-                if (data.by_model && data.by_model.length > 0) {
+                // 归类并复刻使用量分布与列表 - 确保数据始终显示
+                const hasModelData = data.by_model && Array.isArray(data.by_model) && data.by_model.length > 0;
+                const hasItemsData = data.items && Array.isArray(data.items) && data.items.length > 0;
+                
+                if (hasModelData) {
                     const models = [...data.by_model];
                     function vendorOf(name) {
                         const n = (name || '').toLowerCase();
@@ -6436,13 +6956,13 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         group.items.forEach(function(item){
                             const color = colorMap[item.model];
                             const percentage = totalTokens > 0 ? ((item.tokens / totalTokens) * 100).toFixed(1) : 0;
-                            html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee;">';
+                            html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color);">';
                             html += '<div style="display: flex; align-items: center; flex: 1;">';
                             html += '<span style="width: 12px; height: 12px; border-radius: 50%; background: ' + color + '; margin-right: 8px; flex-shrink: 0;"></span>';
-                            html += '<span style="word-break: break-word;">' + item.model + '</span>';
+                            html += '<span style="word-break: break-word; color: var(--text-color);">' + item.model + '</span>';
                             html += '</div>';
                             html += '<div style="text-align: right; margin-left: 12px; white-space: nowrap;">';
-                            html += '<span style="font-weight: bold;">' + item.tokens.toLocaleString() + '</span>';
+                            html += '<span style="font-weight: bold; color: var(--text-color);">' + item.tokens.toLocaleString() + '</span>';
                             html += '<span style="color: var(--text-secondary); margin-left: 4px;">tokens</span>';
                             html += '<span style="color: var(--text-muted); margin-left: 8px;">(' + percentage + '%)</span>';
                             html += '</div>';
@@ -6450,19 +6970,25 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                         });
                     });
                     html += '</div>';
-                } else if (data.items && data.items.length > 0) {
+                } else if (hasItemsData) {
+                    html += '<div style="padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
                     html += '<table class="table" style="width: 100%;"><thead><tr><th>日期</th><th>产品</th><th>模型</th><th>使用量</th></tr></thead><tbody>';
                     data.items.forEach(function(item) {
                         html += '<tr><td>' + (item.date || '-') + '</td><td>' + (item.product || '-') + '</td><td>' + (item.model || '-') + '</td><td>' + (item.usage || item.tokens || 0) + ' ' + (item.unit || 'tokens') + '</td></tr>';
                     });
                     html += '</tbody></table>';
+                    html += '</div>';
                 } else if (totalTokens === 0) {
-                    html += '<div class="status info">暂无使用量数据</div>';
+                    html += '<div class="status info">暂无使用量数据，请稍后刷新重试</div>';
                 }
                 
                 // 显示调试信息（如果有）
                 if (data.debug_info && Object.keys(data.debug_info).length > 0) {
                     console.log('Debug info:', data.debug_info);
+                    // 如果使用了fallback，显示提示
+                    if (data.debug_info.fallback_used) {
+                        html += '<div class="status info" style="margin-top: 12px; font-size: 12px;">数据来源: ' + (data.debug_info.fallback_source || '备用数据源') + '</div>';
+                    }
                 }
                 
                 // 显示错误信息
@@ -6471,7 +6997,15 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                 }
                 
                 html += '</div>';
-                accountCache.usage[key] = { ts: Date.now(), html };
+                
+                // 只有在数据完整时才缓存（有by_model或items数据）
+                if (hasModelData || hasItemsData || totalTokens > 0) {
+                    accountCache.usage[key] = { ts: Date.now(), html };
+                    console.log('Usage data cached successfully');
+                } else {
+                    console.warn('Usage data incomplete, not caching');
+                }
+                
                 el.innerHTML = html;
             } catch (e) {
                 console.error('Failed to load usage:', e);
@@ -6483,9 +7017,13 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         async function loadAccountCost(force = false) {
             const el = document.getElementById('accountCostContent');
             if (!el) return;
-            const window_size = document.getElementById('accountCostWindow')?.value || 'month';
-            const group_by = document.getElementById('accountCostGroupBy')?.value || 'model';
-            const key = `${window_size}|${group_by}`;
+            const key = 'summary';
+            
+            // 强制刷新时清除缓存
+            if (force) {
+                delete accountCache.cost[key];
+            }
+            
             if (!force) {
                 const cached = accountCache.cost[key];
                 if (cached && cached.html && isFresh(cached.ts)) {
@@ -6495,10 +7033,12 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
             }
             el.innerHTML = '<div class="loading">加载中...</div>';
             try {
-                const res = await fetch('/api/account/cost?window_size=' + window_size + '&group_by=' + group_by + (force ? '&force=1' : ''), { headers: getAuthHeaders() });
+                // 强制刷新时添加force参数和时间戳防止缓存
+                const timestamp = Date.now();
+                const res = await fetch('/api/account/cost?force=1&_t=' + timestamp, { headers: getAuthHeaders() });
                 if (!res.ok) throw new Error('加载失败');
                 const data = await res.json();
-                console.log('Cost data:', data);
+                console.log('Cost data (force=' + force + '):', data);
                 
                 let html = '<div style="display: grid; gap: 16px;">';
                 let hasAnyData = false;
@@ -6560,28 +7100,33 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     html += '</div>';
                 }
                 
-                // 按模型分类的成本
-                if (data.by_model && data.by_model.length > 0) {
+                // 按模型分类的成本 - 确保数据始终显示
+                const hasModelCostData = data.by_model && Array.isArray(data.by_model) && data.by_model.length > 0;
+                const hasItemsCostData = data.items && Array.isArray(data.items) && data.items.length > 0;
+                
+                if (hasModelCostData) {
                     hasAnyData = true;
                     html += '<div style="padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
                     html += '<h4 style="margin-bottom: 12px; color: var(--text-color);">按模型分类</h4>';
                     html += '<div style="overflow-x: auto;">';
-                    html += '<table class="table" style="width: 100%; min-width: 360px;"><thead><tr><th>模型</th><th>输入成本</th><th>输出成本</th><th>总成本</th></tr></thead><tbody>';
+                    html += '<table class="table" style="width: 100%; min-width: 360px;"><thead><tr><th style="color: var(--text-color);">模型</th><th style="color: var(--text-color);">输入成本</th><th style="color: var(--text-color);">输出成本</th><th style="color: var(--text-color);">总成本</th></tr></thead><tbody>';
                     data.by_model.forEach(function(item) {
-                        html += '<tr><td>' + (item.model || '-') + '</td><td>$' + (item.input_cost || 0).toFixed(5) + '</td><td>$' + (item.output_cost || 0).toFixed(5) + '</td><td>$' + (item.cost || 0).toFixed(5) + '</td></tr>';
+                        html += '<tr><td style="color: var(--text-color);">' + (item.model || '-') + '</td><td style="color: var(--text-color);">$' + (item.input_cost || 0).toFixed(5) + '</td><td style="color: var(--text-color);">$' + (item.output_cost || 0).toFixed(5) + '</td><td style="color: var(--text-color);">$' + (item.cost || 0).toFixed(5) + '</td></tr>';
                     });
                     html += '</tbody></table>';
                     html += '</div>';
                     html += '</div>';
                 }
-                if (data.items && data.items.length > 0) {
+                if (hasItemsCostData) {
                     hasAnyData = true;
+                    html += '<div style="padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">';
                     html += '<div style="overflow-x: auto;">';
-                    html += '<table class="table" style="width: 100%; min-width: 420px;"><thead><tr><th>日期</th><th>模型</th><th>输入成本</th><th>输出成本</th><th>总成本</th></tr></thead><tbody>';
+                    html += '<table class="table" style="width: 100%; min-width: 420px;"><thead><tr><th style="color: var(--text-color);">日期</th><th style="color: var(--text-color);">模型</th><th style="color: var(--text-color);">输入成本</th><th style="color: var(--text-color);">输出成本</th><th style="color: var(--text-color);">总成本</th></tr></thead><tbody>';
                     data.items.forEach(function(item) {
-                        html += '<tr><td>' + (item.date || '-') + '</td><td>' + (item.model || '-') + '</td><td>$' + (item.input_cost || 0).toFixed(5) + '</td><td>$' + (item.output_cost || 0).toFixed(5) + '</td><td>$' + (item.cost || 0).toFixed(5) + '</td></tr>';
+                        html += '<tr><td style="color: var(--text-color);">' + (item.date || '-') + '</td><td style="color: var(--text-color);">' + (item.model || '-') + '</td><td style="color: var(--text-color);">$' + (item.input_cost || 0).toFixed(5) + '</td><td style="color: var(--text-color);">$' + (item.output_cost || 0).toFixed(5) + '</td><td style="color: var(--text-color);">$' + (item.cost || 0).toFixed(5) + '</td></tr>';
                     });
                     html += '</tbody></table>';
+                    html += '</div>';
                     html += '</div>';
                 }
                 
@@ -6589,12 +7134,28 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
                     html += '<div class="status info">暂无成本数据</div>';
                 }
                 
+                // 显示调试信息（如果有）
+                if (data.debug_info && Object.keys(data.debug_info).length > 0) {
+                    console.log('Cost debug info:', data.debug_info);
+                    if (data.debug_info.fallback_used) {
+                        html += '<div class="status info" style="margin-top: 12px; font-size: 12px;">数据来源: 备用数据源</div>';
+                    }
+                }
+                
                 if (data.error) {
                     html += '<div class="status warning" style="margin-top: 12px;">注意: ' + data.error + '</div>';
                 }
                 
                 html += '</div>';
-                accountCache.cost[key] = { ts: Date.now(), html };
+                
+                // 只有在数据完整时才缓存（有by_model或by_service数据）
+                if (hasModelCostData || (data.by_service && data.by_service.length > 0) || totalCost > 0) {
+                    accountCache.cost[key] = { ts: Date.now(), html };
+                    console.log('Cost data cached successfully, by_model count:', data.by_model ? data.by_model.length : 0);
+                } else {
+                    console.warn('Cost data incomplete, not caching');
+                }
+                
                 el.innerHTML = html;
             } catch (e) {
                 console.error('Failed to load cost:', e);
@@ -6603,9 +7164,8 @@ docker run -e GCLI_CREDS_1='{"client_id":"..."}' \
         }
         // 导出成本数据
         async function exportAccountCost(format) {
-            const window_size = document.getElementById('accountCostWindow')?.value || 'month';
             try {
-                const res = await fetch(`/api/account/export/cost?format=${format}&window_size=${window_size}`, { headers: getAuthHeaders() });
+                const res = await fetch(`/api/account/export/cost?format=${format}`, { headers: getAuthHeaders() });
                 if (!res.ok) throw new Error('导出失败');
                 const data = await res.json();
                 const content = format === 'csv' ? data.data : JSON.stringify(data.data, null, 2);
